@@ -1,0 +1,30 @@
+{
+  "name": "wowhead-gatherer",
+  "productName": "Wowhead Gatherer",
+  "version": "0.1.0",
+  "description": "Shows Wowhead's drops, sources and comments for the item you copy in World of Warcraft.",
+  "author": "Krešimir Čoko",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "build:main": "esbuild src/main/main.ts --bundle --platform=node --format=cjs --external:electron --external:koffi --outfile=dist/main.js",
+    "build:preload": "esbuild src/preload/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/preload.js",
+    "build:renderer": "esbuild src/renderer/popup.ts --bundle --format=iife --outfile=dist/popup.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "npm run build && electron ."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "electron": "^44.7.0",
+    "esbuild": "^0.28.2",
+    "happy-dom": "^20.14.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "koffi": "^3.3.2"
+  }
+}
