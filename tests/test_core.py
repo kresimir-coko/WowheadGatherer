@@ -38,6 +38,7 @@ def test_saved_variables_get_defaults(addon):
     assert addon.g.WowheadGathererDB.enabled is True
     assert addon.g.WowheadGathererDB.language == "client"
     assert addon.g.WowheadGathererCharDB.defaultKeyOffered is False
+    assert addon.g.WowheadGathererDB.readyCopy is True
 
 
 def test_saved_settings_survive_load():

@@ -9,7 +9,8 @@ local ICON_SIZE = 28
 local PADDING = 12
 local BOX_GAP = 10
 -- Keys that only modify others. Pressing one never cancels a copy in progress.
-local MODIFIER_KEYS = {
+-- ReadyCopy.lua uses them too.
+ns.MODIFIER_KEYS = {
     LCTRL = true, RCTRL = true, LSHIFT = true, RSHIFT = true,
     LALT = true, RALT = true, LMETA = true, RMETA = true,
 }
@@ -23,7 +24,7 @@ function ns.CreateCopyWatcher()
     local watcher = {}
 
     function watcher.KeyDown(key, copyModifierDown)
-        if not MODIFIER_KEYS[key] then
+        if not ns.MODIFIER_KEYS[key] then
             armed = key == "C" and copyModifierDown == true
         end
     end

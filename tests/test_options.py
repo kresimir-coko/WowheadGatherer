@@ -29,8 +29,8 @@ def addon(addon):
     addon.load("Keybinding.lua")
     addon.load("Options.lua")
     addon.ns.title = "Wowhead Gatherer"
-    addon.ns.defaults = addon.lua.table_from({"enabled": True, "language": "client", "closeOnCopy": True})
-    addon.ns.db = addon.lua.table_from({"enabled": True, "language": "client", "closeOnCopy": True})
+    addon.ns.defaults = addon.lua.table_from({"enabled": True, "readyCopy": True, "language": "client", "closeOnCopy": True})
+    addon.ns.db = addon.lua.table_from({"enabled": True, "readyCopy": True, "language": "client", "closeOnCopy": True})
     return addon
 
 
@@ -41,7 +41,7 @@ def test_page_is_named_after_the_addon(addon):
 
 def test_every_setting_is_on_the_page(addon):
     addon.run("ns:InitializeOptions()")
-    assert addon.values("registered") == ["enabled", "language", "closeOnCopy"]
+    assert addon.values("registered") == ["enabled", "readyCopy", "language", "closeOnCopy"]
 
 
 def test_key_binding_row_is_on_the_page(addon):

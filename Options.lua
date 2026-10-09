@@ -37,6 +37,8 @@ function ns:InitializeOptions()
     AddCheckbox(category, "enabled", "Enabled",
         "Let the lookup key show Wowhead links. When off, the key only says that it's off.")
     AddKeybindingRow(layout)
+    AddCheckbox(category, "readyCopy", "Copy with one Ctrl+C",
+        "Hold Ctrl over an item and press C to copy its Wowhead link straight away, without the link popup. The Wowhead Gatherer app picks the link up from there.\n\nWhile you hold Ctrl over an item, your other Ctrl key bindings don't work. It's always off in combat and over action buttons, where the lookup key opens the link popup instead.")
 
     layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Link"))
     Settings.CreateDropdown(category, RegisterSetting(category, "language", Settings.VarType.String, "Wowhead language"),

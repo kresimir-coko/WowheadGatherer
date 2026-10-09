@@ -10,6 +10,8 @@ ns.defaults = {
     -- Wowhead's language: "client" follows the game's, "english" is always English.
     language = "client",
     closeOnCopy = true,
+    -- Holding Ctrl over an item readies its link, so one Ctrl+C copies it.
+    readyCopy = true,
     -- Whether the default key was offered with the account-wide bindings.
     defaultKeyOffered = false,
 }
@@ -103,6 +105,7 @@ function ns:PLAYER_LOGIN()
     -- Every add-on's Bindings.xml is loaded by now, so the options page can
     -- show the lookup key.
     self:InitializeOptions()
+    self:InitializeReadyCopy()
 end
 
 -- The player's key bindings come with the account data, so they can still be
@@ -135,6 +138,9 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("VARIABLES_LOADED")
+-- Ctrl and combat, for the readied copy (ReadyCopy.lua).
+eventFrame:RegisterEvent("MODIFIER_STATE_CHANGED")
+eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 
 --------------------------------------------------------------------------------
 -- Slash commands

@@ -41,6 +41,10 @@ ctrlDown, metaDown, macClient = false, false, false
 function IsControlKeyDown() return ctrlDown end
 function IsMetaKeyDown() return metaDown end
 function IsMacClient() return macClient end
+-- Keyboard focus: the frame that last called SetFocus, as the game tracks it.
+keyboardFocus = nil
+function GetCurrentKeyBoardFocus() return keyboardFocus end
+ChatFontNormal = Mock()
 C_AddOns = {
     GetAddOnMetadata = function(_, field)
         return ({ Title = "Wowhead Gatherer", Version = "0.1.0" })[field]
@@ -101,6 +105,11 @@ function FakeTooltip(o)
     if o.legacyLink then
         function tooltip:GetItem() return "Name", o.legacyLink end
     end
+    -- Scripts add-ons hook (run them with Addon.run_hook), and the owner frame.
+    tooltip.hooks = {}
+    function tooltip:HasScript(script) return script == "OnTooltipSetItem" or script == "OnHide" end
+    function tooltip:HookScript(script, func) self.hooks[script] = func end
+    function tooltip:GetOwner() return o.owner end
     return tooltip
 end
 
@@ -132,6 +141,14 @@ function CreateFrame(frameType, name)
         if wasShown and self.scripts.OnHide then self.scripts.OnHide(self) end
     end)
     rawset(frame, "IsShown", function(self) return self.shown end)
+    rawset(frame, "SetFocus", function(self) keyboardFocus = self end)
+    rawset(frame, "ClearFocus", function(self)
+        if keyboardFocus == self then
+            keyboardFocus = nil
+            if self.scripts.OnEditFocusLost then self.scripts.OnEditFocusLost(self) end
+        end
+    end)
+    rawset(frame, "HasFocus", function(self) return keyboardFocus == self end)
     rawset(frame, "CreateFontString", function() return FakeRegion() end)
     table.insert(createdFrames, frame)
     if name then _G[name] = frame end
@@ -151,6 +168,9 @@ C_KeyBindings = Mock()
 CreateSettingsListSectionHeaderInitializer = Mock()
 CreateKeybindingEntryInitializer = Mock()
 SlashCmdList = {}
+
+-- A hidden tooltip, so code that hooks GameTooltip at login always finds one.
+GameTooltip = FakeTooltip({ shown = false })
 """
 
 
@@ -189,6 +209,10 @@ class Addon:
     def values(self, name):
         """A Lua array global as a Python list."""
         return list(self.g[name].values())
+
+    def run_hook(self, tooltip, script):
+        """Runs the function the add-on hooked onto a fake tooltip's script."""
+        self.lua.eval("function(t, s) t.hooks[s](t) end")(tooltip, script)
 
 
 def toc_files():
