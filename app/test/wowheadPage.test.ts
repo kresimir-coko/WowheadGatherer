@@ -1,0 +1,73 @@
+import { describe, expect, it } from 'vitest';
+import { parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
+import { parseZoneNames } from '../src/main/zones';
+import { fixture } from './fixtures';
+
+describe('sliceBracketed', () => {
+  it('finds the matching bracket', () => {
+    expect(sliceBracketed('x [1, {"a": [2]}] y', 2)).toBe('[1, {"a": [2]}]');
+  });
+
+  it('ignores brackets in strings of either quote, with escapes', () => {
+    const text = `{"a": "]}", b: '}{', c: "say \\"]\\""}`;
+    expect(sliceBracketed(text, 0)).toBe(text);
+  });
+
+  it('returns null when the bracket never closes', () => {
+    expect(sliceBracketed('[1, [2]', 0)).toBeNull();
+  });
+});
+
+describe('parseItemPage', () => {
+  it('reads the item, its tables and its comments (Gorehowl)', () => {
+    const page = parseItemPage(fixture('item-28773.html.gz'));
+    expect(page.gatherer.get(3)?.get(28773)).toEqual({ name: 'Gorehowl', quality: 4, icon: 'inv_axe_60' });
+    const droppedBy = page.listviews.get('dropped-by');
+    expect(droppedBy).toHaveLength(1);
+    expect(droppedBy?.[0]).toMatchObject({ name: 'Prince Malchezaar', location: [3457], count: 327, outof: 1822 });
+    expect(page.comments).toHaveLength(90);
+    expect(page.comments[0]).toMatchObject({ rating: 300, user: '7600', indent: 0, sticky: false, deleted: false });
+  });
+
+  it('reads every source table (Netherweave Cloth)', () => {
+    const page = parseItemPage(fixture('item-21877.html.gz'));
+    expect(page.listviews.get('dropped-by')).toHaveLength(200);
+    expect(page.listviews.get('contained-in-item')).toHaveLength(2);
+    expect(page.listviews.get('contained-in-object')).toHaveLength(15);
+    expect(page.listviews.get('fished-in')).toHaveLength(2);
+    expect(page.listviews.get('reagent-for')).toHaveLength(14);
+  });
+
+  it('reads vendor prices in badges (Faceguard of Determination)', () => {
+    const page = parseItemPage(fixture('item-32083.html.gz'));
+    expect(page.listviews.get('sold-by')?.[0]).toMatchObject({ name: "G'eras", cost: [[0, [], [[29434, 50]]]] });
+    expect(page.gatherer.get(3)?.get(29434)?.name).toBe('Badge of Justice');
+  });
+
+  it('finds no item on the not-found page', () => {
+    expect(parseItemPage(fixture('item-999999.html.gz')).gatherer.get(3)?.get(999999)).toBeUndefined();
+  });
+
+  it('copes with a page that is not a Wowhead page', () => {
+    expect(parseItemPage('<html><body>Request blocked.</body></html>')).toEqual({
+      gatherer: new Map(), listviews: new Map(), comments: [],
+    });
+  });
+
+  it('skips data that is cut off', () => {
+    expect(parseItemPage('WH.Gatherer.addData(3, 5, {"1":{"name_enus":"Cut').gatherer.size).toBe(0);
+  });
+});
+
+describe('parseZoneNames', () => {
+  it('reads the TBC zone names', () => {
+    const zones = parseZoneNames(fixture('global-tbc.js.gz'));
+    expect(zones.size).toBe(168);
+    expect(zones.get(3457)).toBe('Karazhan');
+    expect(zones.get(12)).toBe('Elwynn Forest');
+  });
+
+  it('has no names for anything else', () => {
+    expect(parseZoneNames('nothing here').size).toBe(0);
+  });
+});
