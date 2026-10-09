@@ -1,7 +1,7 @@
 import { BrowserWindow, session, type Session } from 'electron';
-import { browserUserAgent } from './userAgent';
 import { withTimeout, type FetchResult } from './wowheadClient';
 import { isCompleteItemPage } from './wowheadPage';
+import { configureWowheadSession } from './wowheadSession';
 
 /** Requests and the hidden window share this session, so a bot-check cookie the window earns helps later requests. */
 const PARTITION = 'persist:wowhead';
@@ -11,8 +11,6 @@ const FETCH_TIMEOUT_MS = 10_000;
 const BROWSER_TIMEOUT_MS = 20_000;
 /** How often the hidden window is checked for the item data, in milliseconds. */
 const BROWSER_POLL_MS = 500;
-/** What the hidden window doesn't need to load: it only wants the page's scripts. */
-const SKIPPED_RESOURCES = new Set(['image', 'media', 'font', 'stylesheet']);
 /** The page's HTML once the browser has finished parsing it, or null while it's still reading. */
 const READ_PARSED_PAGE = "document.readyState === 'loading' ? null : document.documentElement.outerHTML";
 
@@ -22,13 +20,7 @@ function wowheadSession(): Session {
 
 /** Sets up Wowhead's session once, after the app is ready. */
 export function prepareWowheadSession(): void {
-  const ses = wowheadSession();
-  // Wowhead turns away agents that say Electron.
-  ses.setUserAgent(browserUserAgent(ses.getUserAgent()));
-  ses.webRequest.onBeforeRequest((details, callback) => {
-    // Requests from fetchText have no web contents; only the hidden window's pictures and fonts are skipped.
-    callback({ cancel: details.webContentsId !== undefined && SKIPPED_RESOURCES.has(details.resourceType) });
-  });
+  configureWowheadSession(wowheadSession());
 }
 
 /** A GET through Chromium's own network stack. */
