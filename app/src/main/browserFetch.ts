@@ -1,6 +1,7 @@
 import { BrowserWindow, session, type Session } from 'electron';
 import { browserUserAgent } from './userAgent';
 import { withTimeout, type FetchResult } from './wowheadClient';
+import { isCompleteItemPage } from './wowheadPage';
 
 /** Requests and the hidden window share this session, so a bot-check cookie the window earns helps later requests. */
 const PARTITION = 'persist:wowhead';
@@ -12,8 +13,8 @@ const BROWSER_TIMEOUT_MS = 20_000;
 const BROWSER_POLL_MS = 500;
 /** What the hidden window doesn't need to load: it only wants the page's scripts. */
 const SKIPPED_RESOURCES = new Set(['image', 'media', 'font', 'stylesheet']);
-/** Text every item page carries (see wowheadClient.ts). */
-const ITEM_DATA = 'WH.Gatherer.addData(';
+/** The page's HTML once the browser has finished parsing it, or null while it's still reading. */
+const READ_PARSED_PAGE = "document.readyState === 'loading' ? null : document.documentElement.outerHTML";
 
 function wowheadSession(): Session {
   return session.fromPartition(PARTITION);
@@ -36,7 +37,7 @@ export async function fetchText(url: string, headers: Record<string, string>): P
   return { status: response.status, url: response.url, text: await withTimeout(response.text(), FETCH_TIMEOUT_MS) };
 }
 
-/** Loads the page in a hidden window, which runs Wowhead's bot check like any browser, and returns its HTML once the item data is in it. */
+/** Loads the page in a hidden window, which runs Wowhead's bot check like any browser, and returns its HTML once the whole item page is in it. */
 export function loadInBrowser(url: string): Promise<string | null> {
   return new Promise((resolve) => {
     const window = new BrowserWindow({
@@ -56,15 +57,15 @@ export function loadInBrowser(url: string): Promise<string | null> {
       if (!window.isDestroyed()) window.destroy();
       resolve(html);
     };
-    // The bot check can reload the page, so keep looking until the item data is there.
+    // The bot check can reload the page, so keep looking until the whole item page is there.
     poll = setInterval(() => {
       if (window.isDestroyed()) {
         finish(null);
         return;
       }
-      window.webContents.executeJavaScript('document.documentElement.outerHTML').then(
+      window.webContents.executeJavaScript(READ_PARSED_PAGE).then(
         (html: unknown) => {
-          if (typeof html === 'string' && html.includes(ITEM_DATA)) finish(html);
+          if (typeof html === 'string' && isCompleteItemPage(html)) finish(html);
         },
         () => {
           // Between two page loads; the next check tries again.

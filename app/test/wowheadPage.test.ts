@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
+import { isCompleteItemPage, parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
 import { parseZoneNames } from '../src/main/zones';
 import { fixture } from './fixtures';
 
@@ -56,6 +56,21 @@ describe('parseItemPage', () => {
 
   it('skips data that is cut off', () => {
     expect(parseItemPage('WH.Gatherer.addData(3, 5, {"1":{"name_enus":"Cut').gatherer.size).toBe(0);
+  });
+});
+
+describe('isCompleteItemPage', () => {
+  it('accepts a whole item page', () => {
+    expect(isCompleteItemPage(fixture('item-21877.html.gz'))).toBe(true);
+  });
+
+  it('rejects a page read while the browser was still parsing it (item data, but no tables yet)', () => {
+    const html = fixture('item-21877.html.gz');
+    expect(isCompleteItemPage(html.slice(0, html.indexOf('new Listview(')))).toBe(false);
+  });
+
+  it("rejects Wowhead's bot check", () => {
+    expect(isCompleteItemPage('<script src="https://x.awswaf.com/challenge.js"></script>')).toBe(false);
   });
 });
 

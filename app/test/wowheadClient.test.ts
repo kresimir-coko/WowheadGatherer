@@ -85,6 +85,13 @@ describe('WowheadClient', () => {
     expect((await client.lookup(GOREHOWL)).kind).toBe('ready');
   });
 
+  it('does not take a page the browser window hands back half-loaded', async () => {
+    const page = fixture('item-28773.html.gz');
+    const halfLoaded = page.slice(0, page.indexOf('new Listview('));
+    const { client } = setup({ [GOREHOWL.url]: blocked(GOREHOWL.url), [ZONES_URL]: zones() }, halfLoaded);
+    expect(await client.lookup(GOREHOWL)).toMatchObject({ kind: 'error', message: MESSAGES.blocked });
+  });
+
   it("shows the tooltip service's name and icon when the page stays blocked", async () => {
     const { client } = setup({ [GOREHOWL.url]: blocked(GOREHOWL.url), [TOOLTIP_URL]: tooltip() });
     expect(await client.lookup(GOREHOWL)).toEqual({
@@ -98,7 +105,7 @@ describe('WowheadClient', () => {
   });
 
   it('says when the page no longer holds the item', async () => {
-    const changed = ok(GOREHOWL.url, 'WH.Gatherer.addData(3, 5, {"1":{"name_enus":"Something else"}});');
+    const changed = ok(GOREHOWL.url, 'WH.Gatherer.addData(3, 5, {"1":{"name_enus":"Something else"}}); new Listview({id: "comments"});');
     const { client } = setup({ [GOREHOWL.url]: changed, [ZONES_URL]: zones(), [TOOLTIP_URL]: tooltip() });
     expect(await client.lookup(GOREHOWL)).toMatchObject({ kind: 'error', message: MESSAGES.changed, header: { name: 'Gorehowl' } });
   });

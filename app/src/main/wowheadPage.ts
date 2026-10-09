@@ -135,6 +135,15 @@ function readComments(html: string): RawComment[] {
   }));
 }
 
+/**
+ * Whether html is a whole Wowhead item page. The item data comes hundreds of KB
+ * before the Listview tables, so a page read while the browser is still parsing
+ * it has the one without the other; every item page has Listviews (comments at least).
+ */
+export function isCompleteItemPage(html: string): boolean {
+  return html.includes('WH.Gatherer.addData(') && html.includes('new Listview(');
+}
+
 /** Reads the data a Wowhead item page carries in its inline scripts. */
 export function parseItemPage(html: string): ItemPage {
   return { gatherer: readGatherer(html), listviews: readListviews(html), comments: readComments(html) };

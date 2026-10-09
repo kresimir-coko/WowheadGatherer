@@ -2,7 +2,7 @@ import type { ItemHeader, ItemInfo, PopupState } from '../shared/types';
 import type { WowheadLink } from '../shared/wowheadLink';
 import type { DiskCache } from './cache';
 import { buildItemInfo } from './itemInfo';
-import { parseItemPage } from './wowheadPage';
+import { isCompleteItemPage, parseItemPage } from './wowheadPage';
 import { parseZoneNames, type ZoneNames } from './zones';
 
 export interface FetchResult {
@@ -27,9 +27,6 @@ export const ITEM_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const ZONES_MAX_AGE_MS = 7 * ITEM_MAX_AGE_MS;
 /** Bump when ItemInfo changes shape, so old cache files are left alone. */
 const CACHE_VERSION = 1;
-
-/** Text every item page carries; a page without it isn't one the app can read. */
-const ITEM_DATA = 'WH.Gatherer.addData(';
 
 const PAGE_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -84,10 +81,10 @@ export class WowheadClient {
     }
     // Wowhead answers an unknown ID with a 404 and a redirect to its item search.
     if (response.status === 404 || response.url.includes('notFound=')) return { kind: 'not-found' };
-    if (response.status === 200 && response.text.includes(ITEM_DATA)) return { kind: 'html', html: response.text };
+    if (response.status === 200 && isCompleteItemPage(response.text)) return { kind: 'html', html: response.text };
     // Anything else is most likely Wowhead's bot check, which a real browser window passes.
     const html = await this.deps.loadInBrowser(link.url);
-    if (html !== null && html.includes(ITEM_DATA)) return { kind: 'html', html };
+    if (html !== null && isCompleteItemPage(html)) return { kind: 'html', html };
     return { kind: 'blocked' };
   }
 
