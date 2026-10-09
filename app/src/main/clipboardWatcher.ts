@@ -3,7 +3,8 @@ import { parseWowheadLink, type WowheadLink } from '../shared/wowheadLink';
 export interface WatcherDeps {
   clipboardSequence(): number;
   foregroundExeName(): string;
-  readClipboardText(): string;
+  /** Electron's clipboard answers with a promise; tests answer at once. */
+  readClipboardText(): string | Promise<string>;
   onLink(link: WowheadLink): void;
   /** Called on every check with whether the game is in front, so the popup can hide when it isn't. */
   onForeground?(gameInFront: boolean, exeName: string): void;
@@ -37,7 +38,21 @@ export class ClipboardWatcher {
     if (sequence === this.lastSequence) return;
     this.lastSequence = sequence;
     if (!gameInFront) return;
-    const link = parseWowheadLink(this.deps.readClipboardText());
+    const text = this.deps.readClipboardText();
+    if (typeof text === 'string') {
+      this.read(text);
+    } else {
+      text.then(
+        (value) => this.read(value),
+        () => {
+          // Another program held the clipboard; this copy is missed, the next one isn't.
+        },
+      );
+    }
+  }
+
+  private read(text: string): void {
+    const link = parseWowheadLink(text);
     if (link) this.deps.onLink(link);
   }
 

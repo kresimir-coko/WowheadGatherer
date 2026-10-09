@@ -92,6 +92,36 @@ describe('ClipboardWatcher', () => {
     expect(t.links).toEqual([]);
   });
 
+  it("reads a clipboard that answers later (Electron's clipboard is async)", async () => {
+    const links: WowheadLink[] = [];
+    let sequence = 1;
+    const watcher = new ClipboardWatcher({
+      clipboardSequence: () => sequence,
+      foregroundExeName: () => 'WowClassic.exe',
+      readClipboardText: async () => LINK,
+      onLink: (link) => links.push(link),
+    });
+    sequence++;
+    watcher.tick();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(links.map((link) => link.itemId)).toEqual([19019]);
+  });
+
+  it('ignores a clipboard read that fails (another program holds it)', async () => {
+    const links: WowheadLink[] = [];
+    let sequence = 1;
+    const watcher = new ClipboardWatcher({
+      clipboardSequence: () => sequence,
+      foregroundExeName: () => 'WowClassic.exe',
+      readClipboardText: () => Promise.reject(new Error('clipboard busy')),
+      onLink: (link) => links.push(link),
+    });
+    sequence++;
+    watcher.tick();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(links).toEqual([]);
+  });
+
   it('checks on a timer once started', () => {
     vi.useFakeTimers();
     try {
