@@ -32,7 +32,8 @@ It targets **Burning Crusade Anniversary** (2.5.6, `## Interface: 20506`) on Win
   - `npm run build` (esbuild writes `dist/`)
   - `npm start`
   - If Git Bash can't find `npm`, run `export PATH="/c/Program Files/nodejs:$PATH"` first.
-- **Run the app:** see Task 11 of the plan once it's packaged.
+- **Run the app:** from source, `cd app && npm start`. As a program, `cd app && npm run dist`, then run `app\release\Wowhead Gatherer 0.1.0.exe` (portable; copy it anywhere). It lives in the tray, where Quit ends it.
+- **`ELECTRON_RUN_AS_NODE`:** shells started by VS Code extensions (including Claude Code's) set `ELECTRON_RUN_AS_NODE=1`, which makes Electron run as plain Node and fail with "Cannot find module 'electron'". Start it with `env -u ELECTRON_RUN_AS_NODE npm start`, or from a normal terminal.
 - **Display mode:** WoW must be in Windowed or Windowed (Fullscreen) mode. Exclusive full screen hides the overlay.
 - **Verifying WoW APIs:** clone `github.com/Gethe/wow-ui-source` (branch `classic_anniversary`) to the scratchpad and grep `Interface/AddOns/Blizzard_APIDocumentationGenerated`.
 
