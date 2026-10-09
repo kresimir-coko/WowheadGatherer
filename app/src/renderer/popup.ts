@@ -115,6 +115,14 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
   }
 }
 
+/**
+ * The window height that fits the popup: its content plus its own border. scrollHeight
+ * alone leaves out the border, and a window that much too short shows a scrollbar.
+ */
+export function contentHeight(root: HTMLElement): number {
+  return root.scrollHeight + (root.offsetHeight - root.clientHeight);
+}
+
 // In the app, the preload script supplies the bridge; tests call renderState directly.
 const bridge = window.gatherer;
 const root = document.getElementById('popup');
@@ -122,6 +130,6 @@ if (bridge && root) {
   bridge.onState((state) => {
     renderState(root, state, bridge);
     // Once laid out, ask the window to fit the content (main keeps it within limits).
-    requestAnimationFrame(() => bridge.reportHeight(root.scrollHeight));
+    requestAnimationFrame(() => bridge.reportHeight(contentHeight(root)));
   });
 }

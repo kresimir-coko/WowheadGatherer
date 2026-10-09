@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderState, type PopupActions } from '../src/renderer/popup';
+import { contentHeight, renderState, type PopupActions } from '../src/renderer/popup';
 import type { ItemInfo, PopupState } from '../src/shared/types';
 import { parseWowheadLink } from '../src/shared/wowheadLink';
 
@@ -101,5 +101,25 @@ describe('renderState', () => {
     root.querySelector<HTMLButtonElement>('.close')?.click();
     expect(actions.openWowhead).toHaveBeenCalledOnce();
     expect(actions.close).toHaveBeenCalledOnce();
+  });
+});
+
+describe('contentHeight', () => {
+  function box(scrollHeight: number, offsetHeight: number, clientHeight: number): HTMLElement {
+    const element = document.createElement('main');
+    Object.defineProperty(element, 'scrollHeight', { value: scrollHeight });
+    Object.defineProperty(element, 'offsetHeight', { value: offsetHeight });
+    Object.defineProperty(element, 'clientHeight', { value: clientHeight });
+    return element;
+  }
+
+  it("counts the frame's border, so content that fits shows no scrollbar", () => {
+    // 300 px of content inside a 1 px border top and bottom.
+    expect(contentHeight(box(300, 302, 300))).toBe(302);
+  });
+
+  it('asks for all of its content while the window is still too short', () => {
+    // A 96 px window holding 500 px of content.
+    expect(contentHeight(box(500, 96, 94))).toBe(502);
   });
 });
