@@ -1,0 +1,14 @@
+## Interface: 20506
+## Title: Wowhead Gatherer
+## Notes: Hover over any item and press a key to get its Wowhead link.
+## Author: Krešimir Čoko
+## Version: 0.1.0
+## SavedVariables: WowheadGathererDB
+## SavedVariablesPerCharacter: WowheadGathererCharDB
+
+Core.lua
+Url.lua
+Lookup.lua
+Keybinding.lua
+Popup.lua
+Options.lua

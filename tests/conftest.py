@@ -1,0 +1,201 @@
+"""Runs the add-on's Lua files in Lua 5.1 (the game's version) against stubbed WoW APIs.
+
+Each test gets a fresh Lua state. Stubs keep their state in plain globals
+(bindings, flashes, printed, ...) so tests can set them up and check them.
+"""
+import pathlib
+import re
+
+import pytest
+from lupa.lua51 import LuaRuntime
+
+ADDON_DIR = pathlib.Path(__file__).resolve().parent.parent
+ADDON_NAME = "WowheadGatherer"
+
+WOW_STUBS = r"""
+-- A stand-in for any frame or API table: every field is another mock, and
+-- calling one returns a mock, so UI-building code runs without the game.
+function Mock()
+    return setmetatable({}, {
+        __index = function(t, k)
+            local child = Mock()
+            rawset(t, k, child)
+            return child
+        end,
+        -- Two results, for calls like `local category, layout = ...`.
+        __call = function() return Mock(), Mock() end,
+    })
+end
+
+tinsert = table.insert
+Enum = {
+    TooltipDataType = { Item = 0, Spell = 1 },
+    BindingSet = { Default = 0, Account = 1, Character = 2 },
+}
+WOW_PROJECT_ID = 5
+locale = "enUS"
+function GetLocale() return locale end
+inCombat = false
+function InCombatLockdown() return inCombat end
+ctrlDown, metaDown, macClient = false, false, false
+function IsControlKeyDown() return ctrlDown end
+function IsMetaKeyDown() return metaDown end
+function IsMacClient() return macClient end
+C_AddOns = {
+    GetAddOnMetadata = function(_, field)
+        return ({ Title = "Wowhead Gatherer", Version = "0.1.0" })[field]
+    end,
+}
+C_Item = {
+    GetItemIconByID = function(itemID) return 135349 end,
+    GetItemNameByID = function(itemID) return nil end,
+}
+
+printed = {}
+function print(...) table.insert(printed, table.concat({ ... }, " ")) end
+flashes = {}
+UIErrorsFrame = { AddMessage = function(_, text) table.insert(flashes, text) end }
+
+-- Key bindings: key -> action.
+bindings = {}
+savedSet = nil
+currentSet = 1
+function GetCurrentBindingSet() return currentSet end
+function GetBindingKey(action)
+    for key, bound in pairs(bindings) do
+        if bound == action then return key end
+    end
+end
+function GetBindingAction(key) return bindings[key] or "" end
+function SetBinding(key, action) bindings[key] = action; return true end
+function SaveBindings(set) savedSet = set end
+function GetBindingText(key) return (key:gsub("CTRL%-", "Ctrl-")) end
+function GetBindingName(action) return ({ TOGGLEBACKPACK = "Open Backpack" })[action] end
+-- The binding a key press would run, from the bindings table and Ctrl.
+function GetBindingFromClick(key)
+    return bindings[(ctrlDown and "CTRL-" or "") .. key] or ""
+end
+
+-- Mirrors TooltipUtil.GetDisplayedItem in Blizzard_SharedXMLGame/Tooltip/TooltipUtil.lua.
+TooltipUtil = {
+    GetDisplayedItem = function(tooltip)
+        if tooltip:IsTooltipType(Enum.TooltipDataType.Item) then
+            local data = tooltip:GetPrimaryTooltipData()
+            if data.hyperlink then
+                return "Name", data.hyperlink, data.id
+            end
+        end
+    end,
+}
+
+-- Fake tooltips. Options: shown (default true), mouseOver, dataType (0 item,
+-- 1 spell; leave out for a tooltip without tooltip data), dataID, dataLink, legacyLink.
+function FakeTooltip(o)
+    local tooltip = {}
+    function tooltip:IsShown() return o.shown ~= false end
+    function tooltip:IsMouseOver() return o.mouseOver == true end
+    if o.dataType then
+        function tooltip:IsTooltipType(kind) return kind == o.dataType end
+        function tooltip:GetPrimaryTooltipData() return { id = o.dataID, hyperlink = o.dataLink } end
+    end
+    if o.legacyLink then
+        function tooltip:GetItem() return "Name", o.legacyLink end
+    end
+    return tooltip
+end
+
+-- Frames and font strings are mocks that also keep their text and anchor
+-- points; frames also keep their scripts, events and shown state.
+UIParent = Mock()
+UISpecialFrames = {}
+createdFrames = {}
+function FakeRegion()
+    local region = Mock()
+    rawset(region, "SetText", function(self, text) rawset(self, "text", text) end)
+    rawset(region, "GetText", function(self) return rawget(self, "text") end)
+    rawset(region, "points", {})
+    rawset(region, "SetPoint", function(self, ...) table.insert(self.points, { ... }) end)
+    return region
+end
+function CreateFrame(frameType, name)
+    local frame = FakeRegion()
+    rawset(frame, "scripts", {})
+    rawset(frame, "events", {})
+    rawset(frame, "shown", true)
+    rawset(frame, "SetScript", function(self, script, func) self.scripts[script] = func end)
+    rawset(frame, "RegisterEvent", function(self, event) self.events[event] = true end)
+    rawset(frame, "UnregisterEvent", function(self, event) self.events[event] = nil end)
+    rawset(frame, "Show", function(self) self.shown = true end)
+    rawset(frame, "Hide", function(self)
+        local wasShown = self.shown
+        self.shown = false
+        if wasShown and self.scripts.OnHide then self.scripts.OnHide(self) end
+    end)
+    rawset(frame, "IsShown", function(self) return self.shown end)
+    rawset(frame, "CreateFontString", function() return FakeRegion() end)
+    table.insert(createdFrames, frame)
+    if name then _G[name] = frame end
+    return frame
+end
+function FireEvent(event, ...)
+    for _, frame in ipairs(createdFrames) do
+        if frame.events[event] and frame.scripts.OnEvent then
+            frame.scripts.OnEvent(frame, event, ...)
+        end
+    end
+end
+
+-- The settings UI only has to build without errors.
+Settings = Mock()
+C_KeyBindings = Mock()
+CreateSettingsListSectionHeaderInitializer = Mock()
+CreateKeybindingEntryInitializer = Mock()
+SlashCmdList = {}
+"""
+
+
+class Addon:
+    """A fresh Lua state with the WoW stubs. load() runs an add-on file the way
+    WoW does, passing it (addonName, ns)."""
+
+    def __init__(self):
+        self.lua = LuaRuntime(unpack_returned_tuples=True)
+        self.g = self.lua.globals()
+        self.lua.execute(WOW_STUBS)
+        self.ns = self.lua.table()
+        self.g.ns = self.ns
+        self._run_file = self.lua.eval(
+            "function(code, name, ...) return assert(loadstring(code, name))(...) end")
+
+    def load(self, filename):
+        code = (ADDON_DIR / filename).read_text(encoding="utf-8")
+        self._run_file(code, "@" + filename, ADDON_NAME, self.ns)
+
+    def load_all(self):
+        """Loads every file the .toc lists, in its order."""
+        for filename in toc_files():
+            self.load(filename)
+
+    def run(self, code):
+        """Runs Lua code (with `ns` as a global) and returns its results."""
+        return self.lua.execute(code)
+
+    def fire(self, event, *args):
+        self.g.FireEvent(event, *args)
+
+    def tooltip(self, **options):
+        return self.g.FakeTooltip(self.lua.table_from(options))
+
+    def values(self, name):
+        """A Lua array global as a Python list."""
+        return list(self.g[name].values())
+
+
+def toc_files():
+    toc = (ADDON_DIR / f"{ADDON_NAME}.toc").read_text(encoding="utf-8")
+    return [line.strip() for line in toc.splitlines() if re.match(r"^\s*[^#\s].*\.lua\s*$", line)]
+
+
+@pytest.fixture
+def addon():
+    return Addon()

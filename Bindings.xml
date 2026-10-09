@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="WOWHEADGATHERER_LOOKUP" category="BINDING_HEADER_WOWHEADGATHERER">
+        WowheadGatherer_OnBinding()
+    </Binding>
+</Bindings>
