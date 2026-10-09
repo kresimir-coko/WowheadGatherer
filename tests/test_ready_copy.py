@@ -122,6 +122,33 @@ def test_any_other_key_lets_go(addon):
     assert addon.g.keyboardFocus is None
 
 
+def test_a_let_go_lasts_until_ctrl_is_released(addon):
+    # Bag tooltips refresh every 0.2 s while hovered (ContainerFrameItemButton_OnEnter
+    # through UpdateTooltip), firing OnTooltipSetItem again. That mustn't take back the
+    # focus a non-C key just gave up, or every Ctrl+key press would be swallowed.
+    hold_ctrl(addon)
+    key(addon, "OnKeyDown", "1")
+    addon.run_hook(addon.g.GameTooltip, "OnTooltipSetItem")
+    assert ready_url(addon) is None
+    assert addon.g.keyboardFocus is None
+
+
+def test_escape_lets_go_until_ctrl_is_released(addon):
+    hold_ctrl(addon)
+    box = ready_box(addon)
+    box.scripts.OnEscapePressed(box)
+    addon.run_hook(addon.g.GameTooltip, "OnTooltipSetItem")
+    assert ready_url(addon) is None
+
+
+def test_pressing_ctrl_again_readies_again(addon):
+    hold_ctrl(addon)
+    key(addon, "OnKeyDown", "1")
+    release_ctrl(addon)
+    hold_ctrl(addon)
+    assert ready_url(addon) == URL
+
+
 def test_other_modifiers_keep_it_ready(addon):
     hold_ctrl(addon)
     key(addon, "OnKeyDown", "LSHIFT")

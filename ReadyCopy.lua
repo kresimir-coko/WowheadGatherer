@@ -17,6 +17,10 @@ local watcher = ns.CreateCopyWatcher()
 local box
 -- The link in the box while it's readied, or nil.
 local readyURL
+-- Set when a key other than C, or Escape, gave the focus back. Bag tooltips
+-- refresh every 0.2 s while hovered, and that mustn't take the focus again
+-- until Ctrl is pressed anew.
+local letGo = false
 
 local function IsReadyKeyDown()
     return IsControlKeyDown() or IsMetaKeyDown()
@@ -25,6 +29,11 @@ end
 -- Action buttons keep their slot in .action (Blizzard_ActionBar/Shared/ActionButton.lua).
 local function IsActionButton(frame)
     return type(frame) == "table" and frame.action ~= nil
+end
+
+local function LetGo()
+    letGo = true
+    ns:UnreadyCopy()
 end
 
 local function CreateReadyBox()
@@ -40,7 +49,7 @@ local function CreateReadyBox()
         watcher.KeyDown(key, IsReadyKeyDown())
         if key ~= "C" and not ns.MODIFIER_KEYS[key] then
             -- Not a copy: let go, so the next press reaches its key binding.
-            ns:UnreadyCopy()
+            LetGo()
         end
     end)
     editBox:SetScript("OnKeyUp", function(_, key)
@@ -51,9 +60,7 @@ local function CreateReadyBox()
             ns:UnreadyCopy()
         end
     end)
-    editBox:SetScript("OnEscapePressed", function()
-        ns:UnreadyCopy()
-    end)
+    editBox:SetScript("OnEscapePressed", LetGo)
     -- Keep the whole link there and selected, so a copy always takes all of it.
     editBox:SetScript("OnTextChanged", function(self, userInput)
         if userInput and readyURL then
@@ -114,7 +121,7 @@ end
 
 local function OnItemTooltip(tooltip)
     -- Moving to another item while still holding Ctrl readies that one.
-    if tooltip == GameTooltip and IsReadyKeyDown() then
+    if tooltip == GameTooltip and IsReadyKeyDown() and not letGo then
         ns:ReadyCopy()
     end
 end
@@ -137,6 +144,7 @@ function ns:MODIFIER_STATE_CHANGED(key, down)
     if not READY_KEYS[key] then
         return
     end
+    letGo = false
     if down == 1 then
         self:ReadyCopy()
     else
