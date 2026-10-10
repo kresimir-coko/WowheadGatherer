@@ -22,7 +22,7 @@ let root: HTMLElement;
 let actions: PopupActions;
 beforeEach(() => {
   root = document.createElement('main');
-  actions = { close: vi.fn(), openWowhead: vi.fn() };
+  actions = { close: vi.fn(), openWowhead: vi.fn(), openQuest: vi.fn(), goBack: vi.fn(), resized: vi.fn() };
 });
 const show = (state: PopupState) => renderState(root, state, actions);
 const text = (selector: string) => root.querySelector(selector)?.textContent;
@@ -170,5 +170,86 @@ describe('renderState for quests', () => {
     show({ kind: 'ready', link: questLink, info: { ...quest, chain: [{ position: 1, quests: [{ id: 10482, name: evil, current: true }] }] } });
     expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
     expect(text('.chain .current')).toBe(evil);
+  });
+});
+
+const comments = (count: number) => Array.from({ length: count }, (_, i) => ({
+  user: `u${i}`, rating: count - i, date: '', body: [{ kind: 'text' as const, text: `c${i}` }],
+}));
+
+describe('clicking through', () => {
+  it('opens the other quests of the chain, not the one on show or one without an ID', () => {
+    show({ kind: 'ready', link: questLink, info: quest });
+    const links = [...root.querySelectorAll<HTMLButtonElement>('.chain button.quest-link')];
+    expect(links.map((button) => button.textContent)).toEqual(['Know your Enemy', 'Ill Omens']);
+    links[0].click();
+    expect(actions.openQuest).toHaveBeenCalledWith(10160);
+    expect(root.querySelector('.chain .current')?.tagName).toBe('SPAN');
+  });
+
+  it('opens the quests an item starts or is needed for, not its quest rewards', () => {
+    const related: ItemInfo = { ...info, sections: [
+      { title: 'Starts quest', total: 1, rows: [{ name: 'The Fall of Magtheridon', details: ['Level 70'], questId: 11002 }] },
+      { title: 'Quest reward', total: 1, rows: [{ name: 'Some Quest', details: ['Level 60'] }] },
+    ] };
+    show({ kind: 'ready', link, info: related });
+    const links = [...root.querySelectorAll<HTMLButtonElement>('section button.quest-link')];
+    expect(links.map((button) => button.textContent)).toEqual(['The Fall of Magtheridon']);
+    links[0].click();
+    expect(actions.openQuest).toHaveBeenCalledWith(11002);
+    expect(all('section li .name')).toEqual(['The Fall of Magtheridon', 'Some Quest']);
+  });
+
+  it('shows the breadcrumb and goes back from it', () => {
+    show({ kind: 'ready', link: questLink, info: quest, trail: ["Duron's Report", 'Arrival in Outland'] });
+    expect(all('.trail .crumb')).toEqual(["Duron's Report", 'Arrival in Outland']);
+    expect(text('.trail .here')).toBe('Fel Orc Scavengers');
+    root.querySelectorAll<HTMLButtonElement>('.trail .crumb')[1].click();
+    expect(actions.goBack).toHaveBeenCalledWith(1);
+    show({ kind: 'ready', link: questLink, info: quest });
+    expect(root.querySelector('.trail')).toBeNull();
+  });
+
+  it('keeps the breadcrumb while the next quest loads', () => {
+    show({ kind: 'loading', link: questLink, trail: ['Fel Orc Scavengers'] });
+    expect(all('.trail .crumb')).toEqual(['Fel Orc Scavengers']);
+    expect(text('.trail .here')).toBe('Quest 10482');
+  });
+
+  it('never turns breadcrumb names into HTML', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    show({ kind: 'loading', link: questLink, trail: [evil] });
+    expect(root.querySelector('img')).toBeNull();
+    expect(text('.trail .crumb')).toBe(evil);
+  });
+
+  it('starts each page at the top', () => {
+    root.scrollTop = 120;
+    show({ kind: 'loading', link: questLink });
+    expect(root.scrollTop).toBe(0);
+  });
+});
+
+describe('more comments', () => {
+  it('shows the best 3, then 5 more per click, until all are shown', () => {
+    show({ kind: 'ready', link, info: { ...info, comments: comments(12), commentTotal: 12 } });
+    const more = () => root.querySelector<HTMLButtonElement>('.more-comments');
+    expect(root.querySelectorAll('.comment')).toHaveLength(3);
+    expect(more()?.textContent).toBe('Show 5 more comments');
+    more()?.click();
+    expect(root.querySelectorAll('.comment')).toHaveLength(8);
+    expect(more()?.textContent).toBe('Show 4 more comments');
+    more()?.click();
+    expect(root.querySelectorAll('.comment')).toHaveLength(12);
+    expect(more()).toBeNull();
+    expect(actions.resized).toHaveBeenCalledTimes(2);
+    expect(all('.comment .body')).toEqual(comments(12).map((c) => c.body[0].text));
+  });
+
+  it('says "1 more comment", and has no button for 3 or fewer', () => {
+    show({ kind: 'ready', link, info: { ...info, comments: comments(4), commentTotal: 4 } });
+    expect(text('.more-comments')).toBe('Show 1 more comment');
+    show({ kind: 'ready', link, info: { ...info, comments: comments(3), commentTotal: 3 } });
+    expect(root.querySelector('.more-comments')).toBeNull();
   });
 });

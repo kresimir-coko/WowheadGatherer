@@ -86,6 +86,22 @@ section.comments { padding: 0; background: none; border: none; }
 .body blockquote { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--rim); color: var(--muted); }
 .list-item::before { content: "• "; }
 
+/* The breadcrumb above the title: earlier pages are links back. */
+.trail { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+.trail .sep { margin: 0 5px; }
+.trail .here { color: var(--text); }
+
+/* Quest names and breadcrumb steps the player can click: text with a dotted
+   underline, gold on hover. They undo the red button look. */
+button.quest-link, button.crumb {
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+  padding: 0; background: none; border: none; border-radius: 0; box-shadow: none;
+  text-decoration: underline dotted rgba(255, 255, 255, 0.45); text-underline-offset: 3px;
+}
+button.quest-link:hover, button.quest-link:active, button.crumb:hover, button.crumb:active { color: var(--gold); background: none; }
+
+.more-comments { display: block; margin: 8px auto 0; }
+
 /* Item quality colours, as in the game. */
 .q0 { color: #9d9d9d; } .q1 { color: #ffffff; } .q2 { color: #1eff00; } .q3 { color: #0070dd; }
 .q4 { color: #a335ee; } .q5 { color: #ff8000; } .q6 { color: #e6cc80; } .q7 { color: #00ccff; }

@@ -1,10 +1,17 @@
 import type { GathererBridge } from '../preload/preload';
-import type { ChainStep, ItemComment, MarkupNode, PageHeader, PopupState, SourceSection } from '../shared/types';
+import { headerOf, pageName } from '../shared/pageName';
+import type { ChainStep, ItemComment, LookupInfo, MarkupNode, PopupState, SourceSection } from '../shared/types';
 
-/** What the popup's buttons do. The preload bridge supplies them in the app. */
+/** What the popup's buttons and links do. The preload bridge supplies them in the app. */
 export interface PopupActions {
   close(): void;
   openWowhead(): void;
+  /** Opens a quest the page shows: in its chain, or one an item starts or is needed for. */
+  openQuest(id: number): void;
+  /** Goes back to the breadcrumb's page at index. */
+  goBack(index: number): void;
+  /** The content's height changed without a new state ("Show 5 more comments"). */
+  resized(): void;
 }
 
 declare global {
@@ -18,6 +25,9 @@ const ICON_URL = 'https://wow.zamimg.com/images/wow/icons/large/';
 const ICON_NAME = /^[a-z0-9_-]+$/i;
 /** The highest quality with a colour (heirloom). */
 const MAX_QUALITY = 7;
+/** Comments a page opens with, and how many more each click on the button adds. */
+export const FIRST_COMMENTS = 3;
+export const MORE_COMMENTS = 5;
 
 const CONTAINER_TAGS = {
   bold: 'strong', italic: 'em', underline: 'u', small: 'small', quote: 'blockquote', listItem: 'div',
@@ -28,12 +38,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
-}
-
-function headerOf(state: PopupState): PageHeader | null {
-  if (state.kind === 'ready') return state.info;
-  if (state.kind === 'error') return state.header;
-  return null;
 }
 
 function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
@@ -47,9 +51,8 @@ function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
   }
   const quest = (item?.kind ?? state.link.kind) === 'quest';
   const quality = Math.min(Math.max(Math.trunc(item?.quality ?? 1), 0), MAX_QUALITY);
-  const fallbackName = `${state.link.kind === 'quest' ? 'Quest' : 'Item'} ${state.link.id}`;
   // Quest names are gold, as in the game's quest log; items take their quality colour.
-  header.append(el('h1', quest ? 'quest' : `q${quality}`, item?.name ?? fallbackName));
+  header.append(el('h1', quest ? 'quest' : `q${quality}`, pageName(state)));
   const open = el('button', 'open', 'Open on Wowhead');
   open.addEventListener('click', () => actions.openWowhead());
   const close = el('button', 'close', '×');
@@ -59,13 +62,32 @@ function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
   return header;
 }
 
-function renderSection(section: SourceSection): HTMLElement {
+/** The pages clicked through to reach this one, each a way back, then this page. */
+function renderTrail(state: PopupState, trail: string[], actions: PopupActions): HTMLElement {
+  const nav = el('nav', 'trail');
+  trail.forEach((name, index) => {
+    const crumb = el('button', 'crumb', name);
+    crumb.addEventListener('click', () => actions.goBack(index));
+    nav.append(crumb, el('span', 'sep', '›'));
+  });
+  nav.append(el('span', 'here', pageName(state)));
+  return nav;
+}
+
+/** A quest name the player can click to open it in the popup. */
+function questButton(name: string, id: number, actions: PopupActions, className = 'quest-link'): HTMLButtonElement {
+  const button = el('button', className, name);
+  button.addEventListener('click', () => actions.openQuest(id));
+  return button;
+}
+
+function renderSection(section: SourceSection, actions: PopupActions): HTMLElement {
   const block = el('section');
   block.append(el('h2', undefined, section.title));
   const list = el('ul');
   for (const row of section.rows) {
     const item = el('li');
-    item.append(el('span', 'name', row.name));
+    item.append(row.questId ? questButton(row.name, row.questId, actions, 'name quest-link') : el('span', 'name', row.name));
     if (row.details.length > 0) item.append(el('span', 'details', row.details.join(' · ')));
     list.append(item);
   }
@@ -75,7 +97,7 @@ function renderSection(section: SourceSection): HTMLElement {
   return block;
 }
 
-function renderChain(chain: ChainStep[]): HTMLElement {
+function renderChain(chain: ChainStep[], actions: PopupActions): HTMLElement {
   const block = el('section', 'chain');
   block.append(el('h2', undefined, 'Quest chain'));
   const list = el('ul');
@@ -84,7 +106,8 @@ function renderChain(chain: ChainStep[]): HTMLElement {
     const names = el('span', 'name');
     step.quests.forEach((quest, i) => {
       if (i > 0) names.append(' or ');
-      names.append(el('span', quest.current ? 'current' : undefined, quest.name));
+      const clickable = !quest.current && quest.id > 0;
+      names.append(clickable ? questButton(quest.name, quest.id, actions) : el('span', quest.current ? 'current' : undefined, quest.name));
     });
     row.append(el('span', 'position', `${step.position}.`), names);
     list.append(row);
@@ -113,9 +136,39 @@ function renderComment(comment: ItemComment): HTMLElement {
   return block;
 }
 
+function moreLabel(count: number): string {
+  return `Show ${count} more ${count === 1 ? 'comment' : 'comments'}`;
+}
+
+/** The best FIRST_COMMENTS comments, and a button that adds MORE_COMMENTS more per click. */
+function renderComments(info: LookupInfo, actions: PopupActions): HTMLElement {
+  const block = el('section', 'comments');
+  const more = el('button', 'more-comments');
+  block.append(el('h2', undefined, `Comments (${info.commentTotal})`), more);
+  let shown = 0;
+  const showNext = (count: number) => {
+    const next = info.comments.slice(shown, shown + count);
+    more.before(...next.map(renderComment));
+    shown += next.length;
+    const left = info.comments.length - shown;
+    if (left > 0) more.textContent = moreLabel(Math.min(left, MORE_COMMENTS));
+    else more.remove();
+  };
+  showNext(FIRST_COMMENTS);
+  more.addEventListener('click', () => {
+    showNext(MORE_COMMENTS);
+    actions.resized();
+  });
+  return block;
+}
+
 /** Fills the popup with a state. All of Wowhead's text goes in as text, never as HTML. */
 export function renderState(root: HTMLElement, state: PopupState, actions: PopupActions): void {
-  root.replaceChildren(renderHeader(state, actions));
+  root.replaceChildren();
+  // A new page starts at the top, wherever the last one was scrolled to.
+  root.scrollTop = 0;
+  if (state.trail && state.trail.length > 0) root.append(renderTrail(state, state.trail, actions));
+  root.append(renderHeader(state, actions));
   if (state.kind === 'loading') {
     root.append(el('p', 'status', 'Looking it up on Wowhead…'));
     return;
@@ -125,13 +178,9 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
     return;
   }
   const { info } = state;
-  if (info.kind === 'item') root.append(...info.sections.map(renderSection));
-  else if (info.chain.length > 0) root.append(renderChain(info.chain));
-  if (info.comments.length > 0) {
-    const block = el('section', 'comments');
-    block.append(el('h2', undefined, `Comments (${info.commentTotal})`), ...info.comments.map(renderComment));
-    root.append(block);
-  }
+  if (info.kind === 'item') root.append(...info.sections.map((section) => renderSection(section, actions)));
+  else if (info.chain.length > 0) root.append(renderChain(info.chain, actions));
+  if (info.comments.length > 0) root.append(renderComments(info, actions));
   const listsNothing = info.kind === 'item' ? info.sections.length === 0 : info.chain.length === 0;
   if (listsNothing && info.comments.length === 0) {
     root.append(el('p', 'status', info.kind === 'item'
@@ -152,9 +201,16 @@ export function contentHeight(root: HTMLElement): number {
 const bridge = window.gatherer;
 const root = document.getElementById('popup');
 if (bridge && root) {
-  bridge.onState((state) => {
-    renderState(root, state, bridge);
+  const actions: PopupActions = {
+    close: () => bridge.close(),
+    openWowhead: () => bridge.openWowhead(),
+    openQuest: (id) => bridge.openQuest(id),
+    goBack: (index) => bridge.goBack(index),
     // Once laid out, ask the window to fit the content (main keeps it within limits).
-    requestAnimationFrame(() => bridge.reportHeight(contentHeight(root)));
+    resized: () => requestAnimationFrame(() => bridge.reportHeight(contentHeight(root))),
+  };
+  bridge.onState((state) => {
+    renderState(root, state, actions);
+    actions.resized();
   });
 }
