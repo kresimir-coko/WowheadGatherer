@@ -1,12 +1,7 @@
 import { BrowserWindow, globalShortcut, ipcMain, screen, shell, type IpcMainEvent } from 'electron';
 import path from 'node:path';
 import type { PopupState } from '../shared/types';
-import { placePopup, type Point } from './placement';
-
-/** The popup's width, and the range its height fits its content within, in pixels. */
-const POPUP_WIDTH = 420;
-const POPUP_MIN_HEIGHT = 96;
-const POPUP_MAX_HEIGHT = 560;
+import { fitHeight, placePopup, POPUP_MIN_HEIGHT, POPUP_WIDTH, type Point } from './placement';
 
 /** What clicks inside the popup ask of the app. */
 export interface PopupHandlers {
@@ -22,6 +17,8 @@ export class Popup {
   private state: PopupState | null = null;
   private anchor: Point = { x: 0, y: 0 };
   private height = POPUP_MIN_HEIGHT;
+  /** Set while a page clicked inside the popup loads: the height doesn't shrink until it's in. */
+  private holdHeight = false;
 
   constructor(private readonly handlers: PopupHandlers) {
     this.window = new BrowserWindow({
@@ -69,12 +66,15 @@ export class Popup {
   /** Shows a new lookup by the cursor. */
   open(state: PopupState): void {
     this.anchor = screen.getCursorScreenPoint();
+    this.holdHeight = false;
     this.show(state);
   }
 
   /** Shows a lookup's result, if the popup still shows that lookup. */
   update(state: PopupState): void {
-    if (this.window.isVisible() && this.state?.link.url === state.link.url) this.show(state);
+    if (!this.window.isVisible() || this.state?.link.url !== state.link.url) return;
+    this.holdHeight = false;
+    this.show(state);
   }
 
   /** The lookup on show, or null when the popup is hidden. */
@@ -84,7 +84,10 @@ export class Popup {
 
   /** Shows another page where the popup already is: a click inside it. */
   replace(state: PopupState): void {
-    if (this.window.isVisible()) this.show(state);
+    if (!this.window.isVisible()) return;
+    // Keep the size while the clicked page loads, so the popup stays where it is.
+    this.holdHeight = true;
+    this.show(state);
   }
 
   hide(): void {
@@ -106,9 +109,10 @@ export class Popup {
     }
   }
 
-  private fitHeight(height: unknown): void {
-    if (typeof height !== 'number' || !Number.isFinite(height)) return;
-    this.height = Math.round(Math.min(Math.max(height, POPUP_MIN_HEIGHT), POPUP_MAX_HEIGHT));
+  private fitHeight(reported: unknown): void {
+    const height = fitHeight(reported, this.height, this.holdHeight);
+    if (height === null) return;
+    this.height = height;
     this.place();
   }
 
