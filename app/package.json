@@ -1,7 +1,7 @@
 {
   "name": "wowhead-gatherer",
   "productName": "Wowhead Gatherer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shows Wowhead's sources, quest chains and comments for the item or quest you copy in World of Warcraft.",
   "author": "Krešimir Čoko",
   "license": "UNLICENSED",
