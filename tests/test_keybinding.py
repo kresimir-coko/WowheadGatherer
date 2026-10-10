@@ -64,6 +64,6 @@ def test_key_text(addon):
 
 
 def test_binding_runs_the_lookup(addon):
-    addon.run("calls = 0; function ns:LookupHoveredItem() calls = calls + 1 end")
+    addon.run("calls = 0; function ns:LookupHovered() calls = calls + 1 end")
     addon.g.WowheadGatherer_OnBinding()
     assert addon.g.calls == 1

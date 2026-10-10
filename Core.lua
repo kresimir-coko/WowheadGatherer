@@ -47,18 +47,18 @@ function ns:GetWowheadLocale()
     return GetLocale()
 end
 
--- Run by the lookup key: shows the Wowhead link of the item under the cursor.
-function ns:LookupHoveredItem()
+-- Run by the lookup key: shows the Wowhead link of the item or quest under the cursor.
+function ns:LookupHovered()
     if not self.db.enabled then
         ns.Flash("Wowhead Gatherer is turned off. Turn it on in /whg.", 1, 0.1, 0.1)
         return
     end
-    local itemID, link = ns.GetHoveredItem()
-    if not itemID then
-        ns.Flash("Hover over an item to look it up on Wowhead.", 1, 0.1, 0.1)
+    local kind, id, label = ns.GetHovered()
+    if not id then
+        ns.Flash("Hover over an item or quest to look it up on Wowhead.", 1, 0.1, 0.1)
         return
     end
-    self:ShowCopyPopup(ns.BuildItemURL(itemID, WOW_PROJECT_ID, self:GetWowheadLocale()), itemID, link)
+    self:ShowCopyPopup(ns.BuildURL(kind, id, WOW_PROJECT_ID, self:GetWowheadLocale()), kind, id, label)
 end
 
 --------------------------------------------------------------------------------
@@ -80,11 +80,11 @@ function ns:TryOfferDefaultKey()
     end
     local result, action = self:OfferDefaultKey()
     if result == "bound" then
-        self:Print("Hover over any item and press " .. ns.GetLookupKeyText()
+        self:Print("Hover over any item or quest and press " .. ns.GetLookupKeyText()
             .. " to get its Wowhead link. Options: /whg")
     elseif result == "taken" then
         self:Print(GetBindingText(ns.DEFAULT_KEY) .. " is already used for "
-            .. (GetBindingName(action) or action) .. ". Pick a key for item lookups in /whg.")
+            .. (GetBindingName(action) or action) .. ". Pick a key for lookups in /whg.")
     end
 end
 

@@ -8,6 +8,8 @@ local ICON_SIZE = 28
 -- Space around the contents, and between the icon row and the address box, in pixels.
 local PADDING = 12
 local BOX_GAP = 10
+-- The icon shown for a quest: the quest giver's yellow "!".
+local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
 -- Keys that only modify others. Pressing one never cancels a copy in progress.
 -- ReadyCopy.lua uses them too.
 ns.MODIFIER_KEYS = {
@@ -47,8 +49,8 @@ end
 
 local watcher = ns.CreateCopyWatcher()
 local popup
--- The address on show, and its item. Typing into the box puts the address back.
-local currentURL, currentItemID
+-- The address on show, and what it's for. Typing into the box puts the address back.
+local currentURL, currentKind, currentID
 
 -- Ctrl copies on Windows, Cmd (the meta key) on a Mac.
 local function IsCopyModifierDown()
@@ -121,11 +123,11 @@ local function CreatePopup()
     end)
     box:SetScript("OnKeyDown", function(_, key)
         -- Key bindings don't fire while the box has focus, so the lookup key
-        -- over another item would only copy the old address. Look it up instead.
+        -- over another item or quest would only copy the old address. Look it up instead.
         if GetBindingFromClick(key) == ns.BINDING then
-            local itemID = ns.GetHoveredItem()
-            if itemID and itemID ~= currentItemID then
-                ns:LookupHoveredItem()
+            local kind, id = ns.GetHovered()
+            if id and (kind ~= currentKind or id ~= currentID) then
+                ns:LookupHovered()
                 return
             end
         end
@@ -145,13 +147,19 @@ local function CreatePopup()
     return frame
 end
 
--- Shows an item's Wowhead address, selected and ready to copy. Showing it
--- again for another item swaps the contents.
-function ns:ShowCopyPopup(url, itemID, link)
+-- Shows the Wowhead address of an item or quest (kind "item" or "quest"),
+-- selected and ready to copy. label is the item's link or the quest's name, when
+-- known. Showing it again for something else swaps the contents.
+function ns:ShowCopyPopup(url, kind, id, label)
     popup = popup or CreatePopup()
-    currentURL, currentItemID = url, itemID
-    popup.icon:SetTexture(C_Item.GetItemIconByID(itemID))
-    popup.name:SetText(link or C_Item.GetItemNameByID(itemID) or ("Item " .. itemID))
+    currentURL, currentKind, currentID = url, kind, id
+    if kind == "quest" then
+        popup.icon:SetTexture(QUEST_ICON)
+        popup.name:SetText(label or ("Quest " .. id))
+    else
+        popup.icon:SetTexture(C_Item.GetItemIconByID(id))
+        popup.name:SetText(label or C_Item.GetItemNameByID(id) or ("Item " .. id))
+    end
     popup.hint:SetText(GetCopyHint())
     popup.box:SetText(url)
     popup:Show()

@@ -151,6 +151,11 @@ function CreateFrame(frameType, name)
     end)
     rawset(frame, "HasFocus", function(self) return keyboardFocus == self end)
     rawset(frame, "CreateFontString", function() return FakeRegion() end)
+    rawset(frame, "CreateTexture", function()
+        local texture = FakeRegion()
+        rawset(texture, "SetTexture", function(self, path) rawset(self, "texture", path) end)
+        return texture
+    end)
     table.insert(createdFrames, frame)
     if name then _G[name] = frame end
     return frame

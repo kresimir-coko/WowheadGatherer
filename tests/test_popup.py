@@ -62,7 +62,7 @@ def popup(addon):
     addon.load("Popup.lua")
     addon.ns.db = addon.lua.table_from({"closeOnCopy": True})
     addon.run("function ns.Flash(text) table.insert(flashes, text) end")
-    addon.run(f'ns:ShowCopyPopup("{URL}", 19019, "{THUNDERFURY}")')
+    addon.run(f'ns:ShowCopyPopup("{URL}", "item", 19019, "{THUNDERFURY}")')
     return addon.g.WowheadGathererPopup
 
 
@@ -122,7 +122,7 @@ def test_mac_cmd_c_copies(addon, popup):
 
 def test_showing_again_swaps_the_item(addon, popup):
     other = "https://www.wowhead.com/tbc/item=6948"
-    addon.run(f'ns:ShowCopyPopup("{other}", 6948, nil)')
+    addon.run(f'ns:ShowCopyPopup("{other}", "item", 6948, nil)')
     assert len(addon.values("UISpecialFrames")) == 1  # the same popup, not a second one
     assert popup.box.GetText(popup.box) == other
 
@@ -143,13 +143,13 @@ def test_name_and_box_keep_to_their_rows(addon, popup):
 
 @pytest.fixture
 def lookups(addon, popup):
-    """The lookup key is Ctrl+C. Counts lookups; `hovered` is the item under the cursor."""
+    """The lookup key is Ctrl+C. Counts lookups; hoveredKind and hovered say what's under the cursor."""
     addon.g.bindings["CTRL-C"] = "WOWHEADGATHERER_LOOKUP"
     addon.run("""
         lookups = 0
-        hovered = 6948
-        function ns.GetHoveredItem() return hovered end
-        function ns:LookupHoveredItem() lookups = lookups + 1 end
+        hoveredKind, hovered = "item", 6948
+        function ns.GetHovered() if hovered then return hoveredKind, hovered end end
+        function ns:LookupHovered() lookups = lookups + 1 end
     """)
     return addon
 
@@ -176,3 +176,26 @@ def test_lookup_key_over_nothing_copies(lookups, popup):
     release(lookups, popup, "C")
     assert lookups.g.lookups == 0
     assert lookups.values("flashes") == ["Wowhead link copied."]
+
+
+FEL_ORC_URL = "https://www.wowhead.com/tbc/quest=10482"
+
+
+def test_quest_shows_the_quest_icon_and_name(addon, popup):
+    addon.run(f'ns:ShowCopyPopup("{FEL_ORC_URL}", "quest", 10482, "Fel Orc Scavengers")')
+    assert popup.name.GetText(popup.name) == "Fel Orc Scavengers"
+    assert popup.icon.texture == "Interface\GossipFrame\AvailableQuestIcon"
+    assert popup.box.GetText(popup.box) == FEL_ORC_URL
+
+
+def test_quest_without_a_known_name(addon, popup):
+    addon.run(f'ns:ShowCopyPopup("{FEL_ORC_URL}", "quest", 10482, nil)')
+    assert popup.name.GetText(popup.name) == "Quest 10482"
+
+
+def test_lookup_key_over_a_quest_with_the_items_number_looks_it_up(lookups, popup):
+    lookups.g.hoveredKind = "quest"
+    lookups.g.hovered = 19019
+    press(lookups, popup, "C", ctrl=True)
+    release(lookups, popup, "C")
+    assert lookups.g.lookups == 1

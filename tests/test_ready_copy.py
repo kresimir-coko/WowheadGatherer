@@ -86,7 +86,7 @@ def test_leaves_chat_typing_alone(addon):
 def test_leaves_the_link_popup_focus_alone(addon):
     # The fallback link popup is open with its box focused. Holding Ctrl to
     # copy from it must not move the focus to the hidden box.
-    addon.run(f'ns:ShowCopyPopup("{HEARTHSTONE_URL}", 6948, nil); popupBox = keyboardFocus')
+    addon.run(f'ns:ShowCopyPopup("{HEARTHSTONE_URL}", "item", 6948, nil); popupBox = keyboardFocus')
     hold_ctrl(addon)
     assert ready_url(addon) is None
     assert addon.run("return keyboardFocus == popupBox") is True

@@ -1,6 +1,6 @@
-## Interface: 20506
+## Interface: 20506, 16001
 ## Title: Wowhead Gatherer
-## Notes: Hover over an item and press Ctrl+C: the Wowhead Gatherer app shows where it comes from.
+## Notes: Hover over an item or quest and press Ctrl+C: the Wowhead Gatherer app shows where it comes from, its quest chain and what players say.
 ## Author: Krešimir Čoko
 ## Version: 0.1.0
 ## SavedVariables: WowheadGathererDB

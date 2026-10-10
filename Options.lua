@@ -33,12 +33,12 @@ function ns:InitializeOptions()
     local category, layout = Settings.RegisterVerticalLayoutCategory(self.title)
 
     layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Lookup",
-        "Hover over any item, in your bags, on your character, at a vendor, in loot or in a chat link, and press the key to get its Wowhead link."))
+        "Hover over an item (in your bags, on your character, at a vendor, in loot or in a chat link) or a quest (in the quest log, the quest tracker or a chat link), and press the key to get its Wowhead link."))
     AddCheckbox(category, "enabled", "Enabled",
         "Let the lookup key show Wowhead links. When off, the key only says that it's off.")
     AddKeybindingRow(layout)
     AddCheckbox(category, "readyCopy", "Copy with one Ctrl+C",
-        "Hold Ctrl over an item and press C to copy its Wowhead link straight away, without the link popup. The Wowhead Gatherer app picks the link up from there.\n\nWhile you hold Ctrl over an item, your other Ctrl key bindings don't work. It's always off in combat and over action buttons, where the lookup key opens the link popup instead.")
+        "Hold Ctrl over an item or quest and press C to copy its Wowhead link straight away, without the link popup. The Wowhead Gatherer app picks the link up from there.\n\nWhile you hold Ctrl over an item or quest, your other Ctrl key bindings don't work. It's always off in combat and over action buttons, where the lookup key opens the link popup instead.")
 
     layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Link"))
     Settings.CreateDropdown(category, RegisterSetting(category, "language", Settings.VarType.String, "Wowhead language"),

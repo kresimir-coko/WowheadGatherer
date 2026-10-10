@@ -81,7 +81,7 @@ def test_lookup_uses_the_forever_site_there(addon, popups):
 def test_nothing_hovered_says_so(addon, popups):
     addon.g.WowheadGatherer_OnBinding()
     assert popups() == []
-    assert addon.values("flashes") == ["Hover over an item to look it up on Wowhead."]
+    assert addon.values("flashes") == ["Hover over an item or quest to look it up on Wowhead."]
 
 
 def test_turned_off_says_so(addon, popups):
@@ -144,3 +144,19 @@ def test_slash_command_opens_options(addon):
     addon.run("opened = false; function ns:OpenOptions() opened = true end")
     addon.g.SlashCmdList.WOWHEADGATHERER("")
     assert addon.g.opened is True
+
+
+def test_lookup_shows_a_quest_link(addon, popups):
+    addon.fire("PLAYER_LOGIN")
+    addon.run("""
+        questLog = { { title = "Fel Orc Scavengers", questID = 10482, objectives = 1 } }
+        EventRegistry:TriggerEvent("QuestLogFrame.MouseOver", FakeHoverable({ row = 1, mouseOver = true }), 1)
+    """)
+    addon.g.WowheadGatherer_OnBinding()
+    assert popups() == ["https://www.wowhead.com/tbc/quest=10482"]
+
+
+def test_toc_loads_in_tbc_and_forever():
+    toc = (ADDON_DIR / "WowheadGatherer.toc").read_text(encoding="utf-8")
+    # 16001 is a guess at WoW Forever's number (build 1.60.1); check it at launch.
+    assert "## Interface: 20506, 16001" in toc.splitlines()
