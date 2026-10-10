@@ -1,5 +1,5 @@
 import type { GathererBridge } from '../preload/preload';
-import type { ItemComment, MarkupNode, PageHeader, PopupState, SourceSection } from '../shared/types';
+import type { ChainStep, ItemComment, MarkupNode, PageHeader, PopupState, SourceSection } from '../shared/types';
 
 /** What the popup's buttons do. The preload bridge supplies them in the app. */
 export interface PopupActions {
@@ -45,8 +45,11 @@ function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
     icon.alt = '';
     header.append(icon);
   }
+  const quest = (item?.kind ?? state.link.kind) === 'quest';
   const quality = Math.min(Math.max(Math.trunc(item?.quality ?? 1), 0), MAX_QUALITY);
-  header.append(el('h1', `q${quality}`, item?.name ?? `Item ${state.link.id}`));
+  const fallbackName = `${state.link.kind === 'quest' ? 'Quest' : 'Item'} ${state.link.id}`;
+  // Quest names are gold, as in the game's quest log; items take their quality colour.
+  header.append(el('h1', quest ? 'quest' : `q${quality}`, item?.name ?? fallbackName));
   const open = el('button', 'open', 'Open on Wowhead');
   open.addEventListener('click', () => actions.openWowhead());
   const close = el('button', 'close', '×');
@@ -68,6 +71,24 @@ function renderSection(section: SourceSection): HTMLElement {
   }
   const hidden = section.total - section.rows.length;
   if (hidden > 0) list.append(el('li', 'more', `+${hidden} more on Wowhead`));
+  block.append(list);
+  return block;
+}
+
+function renderChain(chain: ChainStep[]): HTMLElement {
+  const block = el('section', 'chain');
+  block.append(el('h2', undefined, 'Quest chain'));
+  const list = el('ul');
+  for (const step of chain) {
+    const row = el('li');
+    const names = el('span', 'name');
+    step.quests.forEach((quest, i) => {
+      if (i > 0) names.append(' or ');
+      names.append(el('span', quest.current ? 'current' : undefined, quest.name));
+    });
+    row.append(el('span', 'position', `${step.position}.`), names);
+    list.append(row);
+  }
   block.append(list);
   return block;
 }
@@ -104,15 +125,18 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
     return;
   }
   const { info } = state;
-  const sections = info.kind === 'item' ? info.sections : [];
-  root.append(...sections.map(renderSection));
+  if (info.kind === 'item') root.append(...info.sections.map(renderSection));
+  else if (info.chain.length > 0) root.append(renderChain(info.chain));
   if (info.comments.length > 0) {
     const block = el('section', 'comments');
     block.append(el('h2', undefined, `Comments (${info.commentTotal})`), ...info.comments.map(renderComment));
     root.append(block);
   }
-  if (sections.length === 0 && info.comments.length === 0) {
-    root.append(el('p', 'status', 'Wowhead lists no sources or comments for this item.'));
+  const listsNothing = info.kind === 'item' ? info.sections.length === 0 : info.chain.length === 0;
+  if (listsNothing && info.comments.length === 0) {
+    root.append(el('p', 'status', info.kind === 'item'
+      ? 'Wowhead lists no sources or comments for this item.'
+      : 'Wowhead lists no chain or comments for this quest.'));
   }
 }
 

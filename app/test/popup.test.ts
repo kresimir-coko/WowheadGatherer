@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { contentHeight, renderState, type PopupActions } from '../src/renderer/popup';
-import type { ItemInfo, PopupState } from '../src/shared/types';
+import type { ItemInfo, PopupState, QuestInfo } from '../src/shared/types';
 import { parseWowheadLink } from '../src/shared/wowheadLink';
 
 const link = parseWowheadLink('https://www.wowhead.com/tbc/item=28773')!;
@@ -122,5 +122,53 @@ describe('contentHeight', () => {
   it('asks for all of its content while the window is still too short', () => {
     // A 96 px window holding 500 px of content.
     expect(contentHeight(box(500, 96, 94))).toBe(502);
+  });
+});
+
+const questLink = parseWowheadLink('https://www.wowhead.com/tbc/quest=10482')!;
+const quest: QuestInfo = {
+  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'quest-start', commentTotal: 21,
+  chain: [
+    { position: 1, quests: [{ name: 'Know your Enemy', current: false }] },
+    { position: 2, quests: [{ name: 'Fel Orc Scavengers', current: true }] },
+    { position: 3, quests: [{ name: 'Ill Omens', current: false }, { name: 'Shields', current: false }] },
+  ],
+  comments: [{ user: 'Lustral', rating: 12, date: 'Jan 2008', body: [{ kind: 'text', text: 'North of Honor Hold.' }] }],
+};
+const all = (selector: string) => [...root.querySelectorAll(selector)].map((node) => node.textContent);
+
+describe('renderState for quests', () => {
+  it('shows the quest name in gold, with the quest icon', () => {
+    show({ kind: 'ready', link: questLink, info: quest });
+    expect(text('h1')).toBe('Fel Orc Scavengers');
+    expect(root.querySelector('h1')?.className).toBe('quest');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('https://wow.zamimg.com/images/wow/icons/large/quest-start.jpg');
+  });
+
+  it('lists the chain in order, marking the quest on show', () => {
+    show({ kind: 'ready', link: questLink, info: quest });
+    expect(text('.chain h2')).toBe('Quest chain');
+    expect(all('.chain .position')).toEqual(['1.', '2.', '3.']);
+    expect(all('.chain li .name')).toEqual(['Know your Enemy', 'Fel Orc Scavengers', 'Ill Omens or Shields']);
+    expect(all('.chain .current')).toEqual(['Fel Orc Scavengers']);
+    expect(text('.comments h2')).toBe('Comments (21)');
+  });
+
+  it('shows the quest number while a quest loads', () => {
+    show({ kind: 'loading', link: questLink });
+    expect(text('h1')).toBe('Quest 10482');
+    expect(root.querySelector('h1')?.className).toBe('quest');
+  });
+
+  it('says so when Wowhead has no chain or comments for a quest', () => {
+    show({ kind: 'ready', link: questLink, info: { ...quest, chain: [], comments: [], commentTotal: 0 } });
+    expect(text('.status')).toBe('Wowhead lists no chain or comments for this quest.');
+  });
+
+  it('never turns quest names into HTML', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    show({ kind: 'ready', link: questLink, info: { ...quest, chain: [{ position: 1, quests: [{ name: evil, current: true }] }] } });
+    expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
+    expect(text('.chain .current')).toBe(evil);
   });
 });
