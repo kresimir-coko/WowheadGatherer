@@ -6,6 +6,11 @@ import type { ZoneNames } from './zones';
 
 /** Wowhead's type number for quests in WH.Gatherer.addData. */
 const QUEST_TYPE = 5;
+/**
+ * The icon shown for every quest: a parchment note. Wowhead's quest pages name theirs
+ * "quest-start", but its image server has no such file.
+ */
+export const QUEST_ICON = 'inv_misc_note_01';
 
 /** Everything the popup shows for a quest, or null when the page doesn't have the quest's data. */
 export function buildQuestInfo(questId: number, page: QuestPage, zones: ZoneNames): QuestInfo | null {
@@ -17,7 +22,7 @@ export function buildQuestInfo(questId: number, page: QuestPage, zones: ZoneName
     // The heading is in the page's language; the Gatherer data can be in English.
     name: page.name ?? quest.name,
     quality: 1,
-    icon: quest.icon ?? '',
+    icon: QUEST_ICON,
     chain: page.chain,
     comments,
     commentTotal: total,

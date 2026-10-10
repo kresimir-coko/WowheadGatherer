@@ -174,7 +174,7 @@ describe('WowheadClient', () => {
     });
     expect(await client.lookup(FEL_ORC)).toEqual({
       kind: 'error', link: FEL_ORC, message: MESSAGES.blocked,
-      header: { kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'quest-start' },
+      header: { kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01' },
     });
   });
 

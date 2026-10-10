@@ -10,7 +10,8 @@ const info = (id: number, file: string) => buildQuestInfo(id, parseQuestPage(fix
 describe('buildQuestInfo', () => {
   it('Fel Orc Scavengers: name, quest icon, chain and the best comments', () => {
     const quest = info(10482, 'quest-10482.html.gz');
-    expect(quest).toMatchObject({ kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'quest-start', commentTotal: 21 });
+    // The page names its icon "quest-start", but Wowhead's image server has no such file.
+    expect(quest).toMatchObject({ kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21 });
     expect(quest?.chain).toHaveLength(3);
     expect(quest?.comments).toHaveLength(3);
   });

@@ -2,7 +2,7 @@ import type { LookupInfo, PageHeader, PopupState } from '../shared/types';
 import type { LookupKind, WowheadLink } from '../shared/wowheadLink';
 import type { DiskCache } from './cache';
 import { buildItemInfo } from './itemInfo';
-import { buildQuestInfo } from './questInfo';
+import { buildQuestInfo, QUEST_ICON } from './questInfo';
 import { parseQuestPage } from './questPage';
 import { isCompletePage, parseItemPage } from './wowheadPage';
 import { parseZoneNames, type ZoneNames } from './zones';
@@ -29,8 +29,6 @@ export const PAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const ZONES_MAX_AGE_MS = 7 * PAGE_MAX_AGE_MS;
 /** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`. */
 const CACHE_VERSION = 2;
-/** Wowhead's icon for quests; its tooltip service gives quests none. */
-const QUEST_ICON = 'quest-start';
 
 const PAGE_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -126,6 +124,7 @@ export class WowheadClient {
         kind: link.kind,
         name: data.name,
         quality: typeof data.quality === 'number' ? data.quality : 1,
+        // The tooltip service gives quests no icon.
         icon: typeof data.icon === 'string' ? data.icon : link.kind === 'quest' ? QUEST_ICON : '',
       };
     } catch {

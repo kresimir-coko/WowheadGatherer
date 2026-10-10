@@ -127,7 +127,7 @@ describe('contentHeight', () => {
 
 const questLink = parseWowheadLink('https://www.wowhead.com/tbc/quest=10482')!;
 const quest: QuestInfo = {
-  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'quest-start', commentTotal: 21,
+  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21,
   chain: [
     { position: 1, quests: [{ name: 'Know your Enemy', current: false }] },
     { position: 2, quests: [{ name: 'Fel Orc Scavengers', current: true }] },
@@ -142,7 +142,7 @@ describe('renderState for quests', () => {
     show({ kind: 'ready', link: questLink, info: quest });
     expect(text('h1')).toBe('Fel Orc Scavengers');
     expect(root.querySelector('h1')?.className).toBe('quest');
-    expect(root.querySelector('img')?.getAttribute('src')).toBe('https://wow.zamimg.com/images/wow/icons/large/quest-start.jpg');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('https://wow.zamimg.com/images/wow/icons/large/inv_misc_note_01.jpg');
   });
 
   it('lists the chain in order, marking the quest on show', () => {
