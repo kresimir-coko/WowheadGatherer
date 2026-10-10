@@ -6,6 +6,7 @@ import { parseWowheadLink } from '../src/shared/wowheadLink';
 
 const link = parseWowheadLink('https://www.wowhead.com/tbc/item=28773')!;
 const info: ItemInfo = {
+  kind: 'item',
   name: 'Gorehowl',
   quality: 4,
   icon: 'inv_axe_60',
@@ -69,7 +70,7 @@ describe('renderState', () => {
   });
 
   it("shows the error, with the tooltip service's name when there is one", () => {
-    show({ kind: 'error', link, message: 'Blocked.', header: { name: 'Gorehowl', quality: 4, icon: 'inv_axe_60' } });
+    show({ kind: 'error', link, message: 'Blocked.', header: { kind: 'item', name: 'Gorehowl', quality: 4, icon: 'inv_axe_60' } });
     expect(text('h1')).toBe('Gorehowl');
     expect(text('.status.error')).toBe('Blocked.');
   });

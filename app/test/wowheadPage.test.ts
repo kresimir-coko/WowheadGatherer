@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCompleteItemPage, parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
+import { isCompletePage, parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
 import { parseZoneNames } from '../src/main/zones';
 import { fixture } from './fixtures';
 
@@ -59,18 +59,22 @@ describe('parseItemPage', () => {
   });
 });
 
-describe('isCompleteItemPage', () => {
+describe('isCompletePage', () => {
   it('accepts a whole item page', () => {
-    expect(isCompleteItemPage(fixture('item-21877.html.gz'))).toBe(true);
+    expect(isCompletePage(fixture('item-21877.html.gz'))).toBe(true);
   });
 
   it('rejects a page read while the browser was still parsing it (item data, but no tables yet)', () => {
     const html = fixture('item-21877.html.gz');
-    expect(isCompleteItemPage(html.slice(0, html.indexOf('new Listview(')))).toBe(false);
+    expect(isCompletePage(html.slice(0, html.indexOf('new Listview(')))).toBe(false);
+  });
+
+  it('accepts a whole quest page', () => {
+    expect(isCompletePage(fixture('quest-10482.html.gz'))).toBe(true);
   });
 
   it("rejects Wowhead's bot check", () => {
-    expect(isCompleteItemPage('<script src="https://x.awswaf.com/challenge.js"></script>')).toBe(false);
+    expect(isCompletePage('<script src="https://x.awswaf.com/challenge.js"></script>')).toBe(false);
   });
 });
 

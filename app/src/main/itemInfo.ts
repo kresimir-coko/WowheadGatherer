@@ -165,6 +165,7 @@ export function buildItemInfo(itemId: number, page: ItemPage, zones: ZoneNames):
   if (!item) return null;
   const { comments, total } = pickComments(page, pageNames(page, zones));
   return {
+    kind: 'item',
     name: item.name,
     quality: item.quality ?? 1,
     icon: item.icon ?? '',

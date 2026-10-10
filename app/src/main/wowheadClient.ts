@@ -1,8 +1,8 @@
-import type { ItemHeader, ItemInfo, PopupState } from '../shared/types';
-import type { WowheadLink } from '../shared/wowheadLink';
+import type { LookupInfo, PageHeader, PopupState } from '../shared/types';
+import type { LookupKind, WowheadLink } from '../shared/wowheadLink';
 import type { DiskCache } from './cache';
 import { buildItemInfo } from './itemInfo';
-import { isCompleteItemPage, parseItemPage } from './wowheadPage';
+import { isCompletePage, parseItemPage } from './wowheadPage';
 import { parseZoneNames, type ZoneNames } from './zones';
 
 export interface FetchResult {
@@ -21,12 +21,12 @@ export interface ClientDeps {
   now?: () => number;
 }
 
-/** How long a looked-up item stays fresh, in milliseconds. */
-export const ITEM_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/** How long a looked-up page stays fresh, in milliseconds. */
+export const PAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 /** How long the zone names stay fresh, in milliseconds. */
-export const ZONES_MAX_AGE_MS = 7 * ITEM_MAX_AGE_MS;
-/** Bump when ItemInfo changes shape, so old cache files are left alone. */
-const CACHE_VERSION = 1;
+export const ZONES_MAX_AGE_MS = 7 * PAGE_MAX_AGE_MS;
+/** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`. */
+const CACHE_VERSION = 2;
 
 const PAGE_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -34,9 +34,9 @@ const PAGE_HEADERS = {
 };
 
 export const MESSAGES = {
-  notFound: (itemId: number) => `Wowhead doesn't know item ${itemId}.`,
+  notFound: (kind: LookupKind, id: number) => `Wowhead doesn't know ${kind} ${id}.`,
   offline: "Couldn't reach Wowhead. Check your internet connection.",
-  blocked: "Wowhead didn't let the app read this item's page. Open it on Wowhead instead.",
+  blocked: "Wowhead didn't let the app read this page. Open it on Wowhead instead.",
   changed: "Wowhead's page looks different from what the app knows, so it can't read it. Open it on Wowhead instead.",
 };
 
@@ -53,16 +53,16 @@ export class WowheadClient {
 
   /** What the popup should show for a link. Never rejects. */
   async lookup(link: WowheadLink): Promise<PopupState> {
-    const key = `item-v${CACHE_VERSION}-${link.site || 'retail'}-${link.lang || 'en'}-${link.itemId}`;
-    const cached = this.deps.cache.get<ItemInfo>(key, ITEM_MAX_AGE_MS, this.now());
+    const key = `item-v${CACHE_VERSION}-${link.site || 'retail'}-${link.lang || 'en'}-${link.id}`;
+    const cached = this.deps.cache.get<LookupInfo>(key, PAGE_MAX_AGE_MS, this.now());
     if (cached) return { kind: 'ready', link, info: cached };
 
     const page = await this.fetchPage(link);
     if (page.kind === 'not-found') {
-      return { kind: 'error', link, message: MESSAGES.notFound(link.itemId), header: null };
+      return { kind: 'error', link, message: MESSAGES.notFound(link.kind, link.id), header: null };
     }
     if (page.kind === 'html') {
-      const info = buildItemInfo(link.itemId, parseItemPage(page.html), await this.zoneNames(link));
+      const info = buildItemInfo(link.id, parseItemPage(page.html), await this.zoneNames(link));
       if (info) {
         this.deps.cache.set(key, info, this.now());
         return { kind: 'ready', link, info };
@@ -81,10 +81,10 @@ export class WowheadClient {
     }
     // Wowhead answers an unknown ID with a 404 and a redirect to its item search.
     if (response.status === 404 || response.url.includes('notFound=')) return { kind: 'not-found' };
-    if (response.status === 200 && isCompleteItemPage(response.text)) return { kind: 'html', html: response.text };
+    if (response.status === 200 && isCompletePage(response.text)) return { kind: 'html', html: response.text };
     // Anything else is most likely Wowhead's bot check, which a real browser window passes.
     const html = await this.deps.loadInBrowser(link.url);
-    if (html !== null && isCompleteItemPage(html)) return { kind: 'html', html };
+    if (html !== null && isCompletePage(html)) return { kind: 'html', html };
     return { kind: 'blocked' };
   }
 
@@ -103,14 +103,15 @@ export class WowheadClient {
     }
   }
 
-  /** The item's name, quality and icon from Wowhead's tooltip service, for when its page can't be read. */
-  private async header(link: WowheadLink): Promise<ItemHeader | null> {
+  /** The name, quality and icon from Wowhead's tooltip service, for when the page can't be read. */
+  private async header(link: WowheadLink): Promise<PageHeader | null> {
     try {
-      const response = await this.deps.fetchText(netherUrl(link, `tooltip/item/${link.itemId}`, true), {});
+      const response = await this.deps.fetchText(netherUrl(link, `tooltip/${link.kind}/${link.id}`, true), {});
       if (response.status !== 200) return null;
       const data = JSON.parse(response.text) as Record<string, unknown>;
       if (typeof data.name !== 'string') return null;
       return {
+        kind: link.kind,
         name: data.name,
         quality: typeof data.quality === 'number' ? data.quality : 1,
         icon: typeof data.icon === 'string' ? data.icon : '',

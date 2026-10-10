@@ -31,7 +31,7 @@ describe('formatChance', () => {
 describe('buildItemInfo', () => {
   it('Gorehowl: dropped by Prince Malchezaar in Karazhan', () => {
     const gorehowl = info(28773);
-    expect(gorehowl).toMatchObject({ name: 'Gorehowl', quality: 4, icon: 'inv_axe_60', commentTotal: 90 });
+    expect(gorehowl).toMatchObject({ kind: 'item', name: 'Gorehowl', quality: 4, icon: 'inv_axe_60', commentTotal: 90 });
     expect(gorehowl.sections).toEqual([
       { title: 'Dropped by', total: 1, rows: [{ name: 'Prince Malchezaar', details: ['Karazhan', '18%'] }] },
     ]);

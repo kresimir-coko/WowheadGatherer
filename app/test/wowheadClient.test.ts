@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { DiskCache } from '../src/main/cache';
-import { ITEM_MAX_AGE_MS, MESSAGES, WowheadClient, withTimeout, type FetchResult } from '../src/main/wowheadClient';
+import { MESSAGES, PAGE_MAX_AGE_MS, WowheadClient, withTimeout, type FetchResult } from '../src/main/wowheadClient';
 import { parseWowheadLink, type WowheadLink } from '../src/shared/wowheadLink';
 import { fixture } from './fixtures';
 
@@ -16,6 +16,7 @@ function link(url: string): WowheadLink {
 const GOREHOWL = link('https://www.wowhead.com/tbc/item=28773');
 const ORE = link('https://www.wowhead.com/tbc/item=23424');
 const GERMAN = link('https://www.wowhead.com/tbc/de/item=28773');
+const FEL_ORC = link('https://www.wowhead.com/tbc/quest=10482');
 const ZONES_URL = 'https://nether.wowhead.com/tbc/data/global';
 const TOOLTIP_URL = 'https://nether.wowhead.com/tbc/tooltip/item/28773';
 const GERMAN_TOOLTIP_URL = 'https://nether.wowhead.com/tbc/de/tooltip/item/28773';
@@ -37,14 +38,14 @@ function setup(answers: Record<string, FetchResult>, browserHtml: string | null 
   });
   const loadInBrowser = vi.fn(async (_url: string) => browserHtml);
   const cache = new DiskCache(mkdtempSync(path.join(tmpdir(), 'whg-client-')));
-  return { client: new WowheadClient({ fetchText, loadInBrowser, cache, now }), asked, loadInBrowser };
+  return { client: new WowheadClient({ fetchText, loadInBrowser, cache, now }), asked, loadInBrowser, cache };
 }
 
 describe('WowheadClient', () => {
   it('reads the item page', async () => {
     const { client } = setup({ [GOREHOWL.url]: gorehowlPage(), [ZONES_URL]: zones() });
     const state = await client.lookup(GOREHOWL);
-    if (state.kind !== 'ready') throw new Error(state.kind);
+    if (state.kind !== 'ready' || state.info.kind !== 'item') throw new Error(state.kind);
     expect(state.info.name).toBe('Gorehowl');
     expect(state.info.sections[0].rows[0]).toEqual({ name: 'Prince Malchezaar', details: ['Karazhan', '18%'] });
   });
@@ -61,7 +62,7 @@ describe('WowheadClient', () => {
     let time = 0;
     const { client, asked } = setup({ [GOREHOWL.url]: gorehowlPage(), [ZONES_URL]: zones() }, null, () => time);
     await client.lookup(GOREHOWL);
-    time = ITEM_MAX_AGE_MS + 1;
+    time = PAGE_MAX_AGE_MS + 1;
     asked.length = 0;
     await client.lookup(GOREHOWL);
     expect(asked).toContain(GOREHOWL.url);
@@ -70,7 +71,7 @@ describe('WowheadClient', () => {
   it('says when Wowhead does not know the item', async () => {
     const notFound = { status: 404, url: 'https://www.wowhead.com/tbc/items?notFound=28773', text: fixture('item-999999.html.gz') };
     const { client } = setup({ [GOREHOWL.url]: notFound });
-    expect(await client.lookup(GOREHOWL)).toEqual({ kind: 'error', link: GOREHOWL, message: MESSAGES.notFound(28773), header: null });
+    expect(await client.lookup(GOREHOWL)).toEqual({ kind: 'error', link: GOREHOWL, message: MESSAGES.notFound('item', 28773), header: null });
   });
 
   it('falls back to a browser window when Wowhead blocks the request', async () => {
@@ -95,7 +96,7 @@ describe('WowheadClient', () => {
   it("shows the tooltip service's name and icon when the page stays blocked", async () => {
     const { client } = setup({ [GOREHOWL.url]: blocked(GOREHOWL.url), [TOOLTIP_URL]: tooltip() });
     expect(await client.lookup(GOREHOWL)).toEqual({
-      kind: 'error', link: GOREHOWL, message: MESSAGES.blocked, header: { name: 'Gorehowl', quality: 4, icon: 'inv_axe_60' },
+      kind: 'error', link: GOREHOWL, message: MESSAGES.blocked, header: { kind: 'item', name: 'Gorehowl', quality: 4, icon: 'inv_axe_60' },
     });
   });
 
@@ -113,7 +114,7 @@ describe('WowheadClient', () => {
   it('still lists sources when the zone names are missing', async () => {
     const { client } = setup({ [GOREHOWL.url]: gorehowlPage() });
     const state = await client.lookup(GOREHOWL);
-    if (state.kind !== 'ready') throw new Error(state.kind);
+    if (state.kind !== 'ready' || state.info.kind !== 'item') throw new Error(state.kind);
     expect(state.info.sections[0].rows[0].details).toEqual(['18%']);
   });
 
@@ -133,6 +134,26 @@ describe('WowheadClient', () => {
     await client.lookup(GOREHOWL);
     await client.lookup(GERMAN);
     expect(asked).toContain(GERMAN.url);
+  });
+
+  it('leaves items cached before quests existed alone (they have no kind)', async () => {
+    const { client, asked, cache } = setup({ [GOREHOWL.url]: gorehowlPage(), [ZONES_URL]: zones() });
+    cache.set('item-v1-tbc-en-28773', { name: 'Gorehowl', quality: 4, icon: 'inv_axe_60', sections: [], comments: [], commentTotal: 0 });
+    const state = await client.lookup(GOREHOWL);
+    expect(asked).toContain(GOREHOWL.url);
+    expect(state).toMatchObject({ kind: 'ready', info: { kind: 'item' } });
+  });
+
+  it('names the kind in the not-found message', () => {
+    expect(MESSAGES.notFound('quest', 10482)).toBe("Wowhead doesn't know quest 10482.");
+  });
+
+  it('says when Wowhead does not know the quest', async () => {
+    const notFound = { status: 404, url: FEL_ORC.url, text: fixture('quest-999999.html.gz') };
+    const { client } = setup({ [FEL_ORC.url]: notFound });
+    expect(await client.lookup(FEL_ORC)).toEqual({
+      kind: 'error', link: FEL_ORC, message: "Wowhead doesn't know quest 10482.", header: null,
+    });
   });
 
   it('asks the tooltip service in the link language', async () => {

@@ -4,22 +4,22 @@ import { parseWowheadLink } from '../src/shared/wowheadLink';
 describe('parseWowheadLink', () => {
   it('reads a TBC link', () => {
     expect(parseWowheadLink('https://www.wowhead.com/tbc/item=19019')).toEqual({
-      url: 'https://www.wowhead.com/tbc/item=19019', site: 'tbc', lang: '', itemId: 19019,
+      url: 'https://www.wowhead.com/tbc/item=19019', site: 'tbc', lang: '', kind: 'item', id: 19019,
     });
   });
 
   it('reads a TBC link in German', () => {
     expect(parseWowheadLink('https://www.wowhead.com/tbc/de/item=19019')).toEqual({
-      url: 'https://www.wowhead.com/tbc/de/item=19019', site: 'tbc', lang: 'de', itemId: 19019,
+      url: 'https://www.wowhead.com/tbc/de/item=19019', site: 'tbc', lang: 'de', kind: 'item', id: 19019,
     });
   });
 
   it('reads retail links, with and without a language', () => {
     expect(parseWowheadLink('https://www.wowhead.com/item=19019')).toEqual({
-      url: 'https://www.wowhead.com/item=19019', site: '', lang: '', itemId: 19019,
+      url: 'https://www.wowhead.com/item=19019', site: '', lang: '', kind: 'item', id: 19019,
     });
     expect(parseWowheadLink('https://www.wowhead.com/de/item=19019')).toEqual({
-      url: 'https://www.wowhead.com/de/item=19019', site: '', lang: 'de', itemId: 19019,
+      url: 'https://www.wowhead.com/de/item=19019', site: '', lang: 'de', kind: 'item', id: 19019,
     });
   });
 
@@ -33,7 +33,7 @@ describe('parseWowheadLink', () => {
   });
 
   it('ignores spaces and a line break around the link', () => {
-    expect(parseWowheadLink('  https://www.wowhead.com/tbc/item=19019\r\n')?.itemId).toBe(19019);
+    expect(parseWowheadLink('  https://www.wowhead.com/tbc/item=19019\r\n')?.id).toBe(19019);
   });
 
   it.each([
@@ -45,8 +45,27 @@ describe('parseWowheadLink', () => {
     ['item 0', 'https://www.wowhead.com/tbc/item=0'],
     ['plain http', 'http://www.wowhead.com/tbc/item=19019'],
     ['nothing', ''],
+    ['quest 0', 'https://www.wowhead.com/tbc/quest=0'],
+    ['an NPC', 'https://www.wowhead.com/tbc/npc=16820'],
   ])('rejects %s', (_, text) => {
     expect(parseWowheadLink(text)).toBeNull();
+  });
+
+  it('reads a TBC quest link', () => {
+    expect(parseWowheadLink('https://www.wowhead.com/tbc/quest=10482')).toEqual({
+      url: 'https://www.wowhead.com/tbc/quest=10482', site: 'tbc', lang: '', kind: 'quest', id: 10482,
+    });
+  });
+
+  it('reads a German WoW Forever quest link', () => {
+    expect(parseWowheadLink('https://www.wowhead.com/forever/de/quest=10482')).toMatchObject({
+      url: 'https://www.wowhead.com/forever/de/quest=10482', site: 'forever', lang: 'de', kind: 'quest', id: 10482,
+    });
+  });
+
+  it('drops the name Wowhead adds after a quest ID', () => {
+    expect(parseWowheadLink('https://www.wowhead.com/tbc/quest=10482/fel-orc-scavengers')?.url)
+      .toBe('https://www.wowhead.com/tbc/quest=10482');
   });
 
   it('rejects a huge clipboard quickly', () => {

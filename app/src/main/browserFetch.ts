@@ -1,6 +1,6 @@
 import { BrowserWindow, session, type Session } from 'electron';
 import { withTimeout, type FetchResult } from './wowheadClient';
-import { isCompleteItemPage } from './wowheadPage';
+import { isCompletePage } from './wowheadPage';
 import { configureWowheadSession } from './wowheadSession';
 
 /** Requests and the hidden window share this session, so a bot-check cookie the window earns helps later requests. */
@@ -57,7 +57,7 @@ export function loadInBrowser(url: string): Promise<string | null> {
       }
       window.webContents.executeJavaScript(READ_PARSED_PAGE).then(
         (html: unknown) => {
-          if (typeof html === 'string' && isCompleteItemPage(html)) finish(html);
+          if (typeof html === 'string' && isCompletePage(html)) finish(html);
         },
         () => {
           // Between two page loads; the next check tries again.

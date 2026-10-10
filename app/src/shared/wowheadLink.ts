@@ -1,12 +1,16 @@
-/** A Wowhead item address the add-on copied, e.g. https://www.wowhead.com/tbc/de/item=19019. */
+/** What a Wowhead link points at. */
+export type LookupKind = 'item' | 'quest';
+
+/** A Wowhead address the add-on copied, e.g. https://www.wowhead.com/tbc/de/item=19019 or …/tbc/quest=10482. */
 export interface WowheadLink {
-  /** The address, rebuilt with nothing after the item ID. */
+  /** The address, rebuilt with nothing after the ID. */
   url: string;
   /** Wowhead's game path: "tbc", "forever", or "" for retail. */
   site: string;
   /** Wowhead's language path: "de", "fr", … or "" for English. */
   lang: string;
-  itemId: number;
+  kind: LookupKind;
+  id: number;
 }
 
 /** The language paths Wowhead accepts after the game path (the add-on's Url.lua uses the same). */
@@ -15,9 +19,9 @@ const LANGUAGES = new Set(['de', 'es', 'mx', 'fr', 'it', 'pt', 'ru', 'ko', 'cn',
 /** The longest clipboard text worth reading, in characters; a link is far shorter. */
 const MAX_LINK_LENGTH = 300;
 
-const LINK = /^https:\/\/www\.wowhead\.com\/(?:([a-z-]+)\/)?(?:([a-z]{2})\/)?item=(\d+)(?:[/?#]\S*)?$/;
+const LINK = /^https:\/\/www\.wowhead\.com\/(?:([a-z-]+)\/)?(?:([a-z]{2})\/)?(item|quest)=(\d+)(?:[/?#]\S*)?$/;
 
-/** Reads a Wowhead item link, or returns null for anything else. */
+/** Reads a Wowhead item or quest link, or returns null for anything else. */
 export function parseWowheadLink(text: string): WowheadLink | null {
   if (text.length > MAX_LINK_LENGTH) return null;
   const match = LINK.exec(text.trim());
@@ -30,8 +34,9 @@ export function parseWowheadLink(text: string): WowheadLink | null {
     site = '';
   }
   if (lang && !LANGUAGES.has(lang)) return null;
-  const itemId = Number(match[3]);
-  if (!Number.isSafeInteger(itemId) || itemId <= 0) return null;
+  const kind = match[3] as LookupKind;
+  const id = Number(match[4]);
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
   const path = [site, lang].filter(Boolean).map((part) => `${part}/`).join('');
-  return { url: `https://www.wowhead.com/${path}item=${itemId}`, site, lang, itemId };
+  return { url: `https://www.wowhead.com/${path}${kind}=${id}`, site, lang, kind, id };
 }

@@ -136,11 +136,11 @@ function readComments(html: string): RawComment[] {
 }
 
 /**
- * Whether html is a whole Wowhead item page. The item data comes hundreds of KB
- * before the Listview tables, so a page read while the browser is still parsing
- * it has the one without the other; every item page has Listviews (comments at least).
+ * Whether html is a whole Wowhead item or quest page. The page's Gatherer data comes
+ * well before its Listview tables, so a page read while the browser is still parsing
+ * it has the one without the other; every item and quest page has Listviews.
  */
-export function isCompleteItemPage(html: string): boolean {
+export function isCompletePage(html: string): boolean {
   return html.includes('WH.Gatherer.addData(') && html.includes('new Listview(');
 }
 

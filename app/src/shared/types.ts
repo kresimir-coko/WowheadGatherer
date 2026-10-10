@@ -1,4 +1,4 @@
-import type { WowheadLink } from './wowheadLink';
+import type { LookupKind, WowheadLink } from './wowheadLink';
 
 /** One line of a section: who or what, and the details after it. */
 export interface SourceRow {
@@ -31,23 +31,48 @@ export interface ItemComment {
   body: MarkupNode[];
 }
 
-export interface ItemHeader {
+/** What the popup's header shows. */
+export interface PageHeader {
+  kind: LookupKind;
   name: string;
-  /** 0 poor … 5 legendary, 6 artifact, 7 heirloom, as in the game. */
+  /** 0 poor … 5 legendary, 6 artifact, 7 heirloom, as in the game; quests are 1. */
   quality: number;
-  /** The icon's file name on Wowhead's image server, e.g. "inv_axe_60", or "". */
+  /** The icon's file name on Wowhead's image server, e.g. "inv_axe_60" or "quest-start", or "". */
   icon: string;
 }
 
-export interface ItemInfo extends ItemHeader {
+export interface ItemInfo extends PageHeader {
+  kind: 'item';
   sections: SourceSection[];
   comments: ItemComment[];
   /** Top-level comments on the page, of which `comments` are the best few. */
   commentTotal: number;
 }
 
+/** One quest of a chain step, and whether it's the quest on show. */
+export interface ChainQuest {
+  name: string;
+  current: boolean;
+}
+
+/** One step of a quest chain: its number, and its quests (more than one where the chain branches). */
+export interface ChainStep {
+  position: number;
+  quests: ChainQuest[];
+}
+
+export interface QuestInfo extends PageHeader {
+  kind: 'quest';
+  /** Wowhead's "Series" box in order, or [] when the quest isn't in a chain. */
+  chain: ChainStep[];
+  comments: ItemComment[];
+  commentTotal: number;
+}
+
+export type LookupInfo = ItemInfo | QuestInfo;
+
 /** What the popup shows. */
 export type PopupState =
   | { kind: 'loading'; link: WowheadLink }
-  | { kind: 'ready'; link: WowheadLink; info: ItemInfo }
-  | { kind: 'error'; link: WowheadLink; message: string; header: ItemHeader | null };
+  | { kind: 'ready'; link: WowheadLink; info: LookupInfo }
+  | { kind: 'error'; link: WowheadLink; message: string; header: PageHeader | null };

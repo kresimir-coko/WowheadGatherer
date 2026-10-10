@@ -1,5 +1,5 @@
 import type { GathererBridge } from '../preload/preload';
-import type { ItemComment, ItemHeader, MarkupNode, PopupState, SourceSection } from '../shared/types';
+import type { ItemComment, MarkupNode, PageHeader, PopupState, SourceSection } from '../shared/types';
 
 /** What the popup's buttons do. The preload bridge supplies them in the app. */
 export interface PopupActions {
@@ -30,7 +30,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-function headerOf(state: PopupState): ItemHeader | null {
+function headerOf(state: PopupState): PageHeader | null {
   if (state.kind === 'ready') return state.info;
   if (state.kind === 'error') return state.header;
   return null;
@@ -46,7 +46,7 @@ function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
     header.append(icon);
   }
   const quality = Math.min(Math.max(Math.trunc(item?.quality ?? 1), 0), MAX_QUALITY);
-  header.append(el('h1', `q${quality}`, item?.name ?? `Item ${state.link.itemId}`));
+  header.append(el('h1', `q${quality}`, item?.name ?? `Item ${state.link.id}`));
   const open = el('button', 'open', 'Open on Wowhead');
   open.addEventListener('click', () => actions.openWowhead());
   const close = el('button', 'close', '×');
@@ -103,14 +103,15 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
     root.append(el('p', 'status error', state.message));
     return;
   }
-  const { sections, comments, commentTotal } = state.info;
+  const { info } = state;
+  const sections = info.kind === 'item' ? info.sections : [];
   root.append(...sections.map(renderSection));
-  if (comments.length > 0) {
+  if (info.comments.length > 0) {
     const block = el('section', 'comments');
-    block.append(el('h2', undefined, `Comments (${commentTotal})`), ...comments.map(renderComment));
+    block.append(el('h2', undefined, `Comments (${info.commentTotal})`), ...info.comments.map(renderComment));
     root.append(block);
   }
-  if (sections.length === 0 && comments.length === 0) {
+  if (sections.length === 0 && info.comments.length === 0) {
     root.append(el('p', 'status', 'Wowhead lists no sources or comments for this item.'));
   }
 }

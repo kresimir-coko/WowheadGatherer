@@ -27,7 +27,7 @@ describe('ClipboardWatcher', () => {
     const t = setup();
     t.copy(LINK);
     t.watcher.tick();
-    expect(t.links.map((link) => link.itemId)).toEqual([19019]);
+    expect(t.links.map((link) => link.id)).toEqual([19019]);
   });
 
   it('does nothing while the clipboard stays the same', () => {
@@ -104,7 +104,7 @@ describe('ClipboardWatcher', () => {
     sequence++;
     watcher.tick();
     await new Promise((r) => setTimeout(r, 0));
-    expect(links.map((link) => link.itemId)).toEqual([19019]);
+    expect(links.map((link) => link.id)).toEqual([19019]);
   });
 
   it('ignores a clipboard read that fails (another program holds it)', async () => {
