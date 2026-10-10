@@ -24,7 +24,7 @@ const TAG = /\[(\/?)([a-z0-9]+)(?:=([^\]\s]*))?[^\]]*\]/gi;
 const ENTITY = /&(#\d+|#x[0-9a-f]+|[a-z]+);/gi;
 const NAMED_ENTITIES: Record<string, string> = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 
-function decodeEntities(text: string): string {
+export function decodeEntities(text: string): string {
   return text.replace(ENTITY, (whole, name: string) => {
     const lower = name.toLowerCase();
     if (lower.startsWith('#')) {
