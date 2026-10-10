@@ -211,8 +211,18 @@ function FakeHoverable(o)
     function o:IsVisible() return self.shown ~= false end
     function o:IsMouseOver() return self.mouseOver == true end
     function o:GetID() return self.row end
+    function o:GetParent() return self.parent end
     return o
 end
+
+-- What the cursor is on: the top of GetMouseFoci(), the frame that takes the
+-- mouse there (WorldFrame when no frame does), or nil when unknown.
+mouseFocus = nil
+function GetMouseFoci() return { mouseFocus } end
+WorldFrame = FakeHoverable({})
+-- Whether the player is turning with the mouse (right button held).
+mouselooking = false
+function IsMouselooking() return mouselooking end
 
 -- TBC's quest log: questLog[index] = { title, questID, isHeader, objectives },
 -- scrolled down questLogOffset rows. GetQuestLogTitle returns what TBC's

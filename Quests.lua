@@ -22,8 +22,42 @@ local chatLinkQuest
 -- TBC tracker line number -> { questID, title }, rebuilt after each tracker update.
 local watchLineQuests = {}
 
+-- The top frame under the cursor that takes the mouse (WorldFrame when none
+-- does), or nil when the client can't say.
+local function MouseFocus()
+    local foci = GetMouseFoci and GetMouseFoci()
+    return foci and foci[1]
+end
+
+-- Whether frame is ancestor or sits inside it.
+local function IsWithin(frame, ancestor)
+    while frame do
+        if frame == ancestor then
+            return true
+        end
+        frame = frame:GetParent()
+    end
+    return false
+end
+
+-- Whether the cursor is on a button or block, not on a frame covering it (an
+-- open bag, say): IsMouseOver only checks the rectangle.
 local function IsHovered(region)
-    return region ~= nil and region:IsVisible() and region:IsMouseOver()
+    if not (region ~= nil and region:IsVisible() and region:IsMouseOver()) then
+        return false
+    end
+    local focus = MouseFocus()
+    return focus == nil or IsWithin(focus, region)
+end
+
+-- TBC's tracker lines take no mouse, so one counts only when no frame that
+-- does is over it: the cursor is on the 3D world, or on the tracker itself.
+local function IsLineHovered(line)
+    if not (line:IsVisible() and line:IsMouseOver()) then
+        return false
+    end
+    local focus = MouseFocus()
+    return focus == nil or focus == WorldFrame or IsWithin(focus, QuestWatchFrame)
 end
 
 -- A quest's name, where the client knows it: C_QuestLog.GetTitleForQuestID on
@@ -40,7 +74,13 @@ end
 -- The quest on a TBC quest log title. It's read now, not when the title was
 -- entered, so a wheel scroll since then is followed. Headers (zones) have none.
 local function LogButtonQuest(button)
-    local index = button:GetID() + FauxScrollFrame_GetOffset(QuestLogListScrollFrame)
+    -- "All" (QuestLogCollapseAllButton) shares the title buttons' template and
+    -- announces itself too, but it's no row: its ID is 0.
+    local row = button:GetID()
+    if not row or row < 1 then
+        return nil
+    end
+    local index = row + FauxScrollFrame_GetOffset(QuestLogListScrollFrame)
     local title, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(index)
     if questID and questID > 0 and not isHeader then
         return questID, title
@@ -70,7 +110,7 @@ local function TrackerLineQuest()
         return nil
     end
     for l, quest in pairs(watchLineQuests) do
-        if quest.questID and IsHovered(_G["QuestWatchLine" .. l]) then
+        if quest.questID and IsLineHovered(_G["QuestWatchLine" .. l]) then
             return quest.questID, quest.title
         end
     end
@@ -78,6 +118,10 @@ end
 
 -- Returns the ID and, when known, the name of the quest under the cursor, or nil.
 function ns.GetHoveredQuest()
+    -- Turning with the mouse freezes the cursor wherever the turn began.
+    if IsMouselooking and IsMouselooking() then
+        return nil
+    end
     if chatLinkQuest and ItemRefTooltip:IsShown() and ItemRefTooltip:IsMouseOver() then
         return chatLinkQuest, ns.QuestTitle(chatLinkQuest)
     end

@@ -194,3 +194,45 @@ def test_entering_a_quest_tells_the_ready_copy(tbc):
     tbc.run("entered = 0; function ns:OnQuestEntered() entered = entered + 1 end")
     enter_log_title(tbc, 2)
     assert tbc.g.entered == 1
+
+
+def test_the_all_button_is_not_a_quest(tbc):
+    # "All" (QuestLogCollapseAllButton) uses the title buttons' template, so it
+    # announces itself too, but it's no row: its ID is 0.
+    tbc.g.questLogOffset = 2
+    enter_log_title(tbc, 0)
+    assert hovered(tbc) is None
+
+
+def test_a_frame_over_the_quest_log_title_hides_it(tbc):
+    button = enter_log_title(tbc, 2)
+    tbc.run("mouseFocus = FakeHoverable({})")  # a bag open over the quest log
+    assert hovered(tbc) is None
+    # On a part of the title button itself, it counts.
+    tbc.lua.eval("function(b) mouseFocus = FakeHoverable({ parent = b }) end")(button)
+    assert hovered(tbc) == FEL_ORC
+
+
+def test_a_bag_over_the_tracker_hides_it(tbc):
+    watch_both_quests(tbc)
+    hover_line(tbc, 1)
+    tbc.run("mouseFocus = FakeHoverable({})")  # an open bag, which takes the mouse
+    assert hovered(tbc) is None
+    tbc.run("mouseFocus = WorldFrame")  # nothing takes the mouse there: the line shows through
+    assert hovered(tbc) == FEL_ORC
+
+
+def test_forever_a_bag_over_the_tracker_hides_it(forever):
+    forever.run("""
+        local block = FakeHoverable({ mouseOver = true, id = 10482 })
+        EventRegistry:TriggerEvent("OnQuestBlockHeader.OnEnter", block, 10482, false)
+        mouseFocus = FakeHoverable({})
+    """)
+    assert hovered(forever) is None
+
+
+def test_not_while_turning_with_the_mouse(tbc):
+    # Turning with the mouse freezes the cursor wherever the turn began.
+    enter_log_title(tbc, 2)
+    tbc.g.mouselooking = True
+    assert hovered(tbc) is None
