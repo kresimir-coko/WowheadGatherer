@@ -75,8 +75,12 @@ export interface QuestInfo extends PageHeader {
 
 export type LookupInfo = ItemInfo | QuestInfo;
 
-/** What the popup shows. */
-export type PopupState =
+/** What the popup shows: a lookup, and the pages clicked through to reach it. */
+export type PopupState = (
   | { kind: 'loading'; link: WowheadLink }
   | { kind: 'ready'; link: WowheadLink; info: LookupInfo }
-  | { kind: 'error'; link: WowheadLink; message: string; header: PageHeader | null };
+  | { kind: 'error'; link: WowheadLink; message: string; header: PageHeader | null }
+) & {
+  /** The names of the pages clicked through to reach this one, oldest first; none for a fresh lookup. */
+  trail?: string[];
+};

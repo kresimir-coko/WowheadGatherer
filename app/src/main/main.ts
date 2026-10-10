@@ -6,6 +6,7 @@ import { DiskCache } from './cache';
 import { ClipboardWatcher } from './clipboardWatcher';
 import { latestOnly } from './latestOnly';
 import { Popup } from './popupWindow';
+import { Trail } from './trail';
 import { TRAY_ICON_SIZE, trayIconPixels } from './trayIcon';
 import { clipboardSequence, foregroundExeName } from './win32';
 import { WowheadClient } from './wowheadClient';
@@ -16,13 +17,28 @@ let watcher: ClipboardWatcher | undefined;
 
 function start(): void {
   prepareWowheadSession();
-  const popup = new Popup();
+  const trail = new Trail();
   const client = new WowheadClient({
     fetchText,
     loadInBrowser,
     cache: new DiskCache(path.join(app.getPath('userData'), 'cache')),
   });
-  const lookUp = latestOnly((link: WowheadLink) => client.lookup(link), (state) => popup.update(state));
+  // Results carry the breadcrumb as it is when they arrive; latestOnly drops any the player has clicked past.
+  const lookUp = latestOnly(
+    (link: WowheadLink) => client.lookup(link),
+    (state) => popup.update({ ...state, trail: trail.names() }),
+  );
+  // A click inside the popup: show the page loading where the popup is, then look it up.
+  const goTo = (link: WowheadLink | null) => {
+    if (!link) return;
+    popup.replace({ kind: 'loading', link, trail: trail.names() });
+    lookUp(link);
+  };
+  const popup = new Popup({
+    openQuest: (id) => goTo(trail.open(popup.current(), id)),
+    goBack: (index) => goTo(trail.back(index)),
+    closed: () => trail.clear(),
+  });
   const ownExe = path.basename(process.execPath).toLowerCase();
 
   watcher = new ClipboardWatcher({
@@ -30,6 +46,8 @@ function start(): void {
     foregroundExeName,
     readClipboardText: () => clipboard.readText(),
     onLink: (link) => {
+      // A lookup from the game starts a fresh trail.
+      trail.clear();
       popup.open({ kind: 'loading', link });
       lookUp(link);
     },

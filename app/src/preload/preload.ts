@@ -12,6 +12,14 @@ const bridge = {
   openWowhead(): void {
     ipcRenderer.send('popup:open-wowhead');
   },
+  /** Opens a quest the page shows; the app checks it's one the page may open. */
+  openQuest(id: number): void {
+    ipcRenderer.send('popup:open-quest', id);
+  },
+  /** Goes back to the breadcrumb's page at index. */
+  goBack(index: number): void {
+    ipcRenderer.send('popup:go-back', index);
+  },
   reportHeight(height: number): void {
     ipcRenderer.send('popup:height', height);
   },
