@@ -17,6 +17,7 @@ const GOREHOWL = link('https://www.wowhead.com/tbc/item=28773');
 const ORE = link('https://www.wowhead.com/tbc/item=23424');
 const GERMAN = link('https://www.wowhead.com/tbc/de/item=28773');
 const FEL_ORC = link('https://www.wowhead.com/tbc/quest=10482');
+const FEL_ORC_TOOLTIP_URL = 'https://nether.wowhead.com/tbc/tooltip/quest/10482';
 const ZONES_URL = 'https://nether.wowhead.com/tbc/data/global';
 const TOOLTIP_URL = 'https://nether.wowhead.com/tbc/tooltip/item/28773';
 const GERMAN_TOOLTIP_URL = 'https://nether.wowhead.com/tbc/de/tooltip/item/28773';
@@ -26,6 +27,7 @@ const blocked = (url: string): FetchResult => ({ status: 403, url, text: '<h1>40
 const gorehowlPage = () => ok(`${GOREHOWL.url}/gorehowl`, fixture('item-28773.html.gz'));
 const zones = () => ok(ZONES_URL, fixture('global-tbc.js.gz'));
 const tooltip = () => ok(TOOLTIP_URL, fixture('tooltip-28773.json'));
+const felOrcPage = () => ok(`${FEL_ORC.url}/fel-orc-scavengers`, fixture('quest-10482.html.gz'));
 
 /** A client on a fake network: address → answer. Addresses it doesn't know fail like an offline network. */
 function setup(answers: Record<string, FetchResult>, browserHtml: string | null = null, now?: () => number) {
@@ -154,6 +156,35 @@ describe('WowheadClient', () => {
     expect(await client.lookup(FEL_ORC)).toEqual({
       kind: 'error', link: FEL_ORC, message: "Wowhead doesn't know quest 10482.", header: null,
     });
+  });
+
+  it('reads a quest page', async () => {
+    const { client } = setup({ [FEL_ORC.url]: felOrcPage(), [ZONES_URL]: zones() });
+    const state = await client.lookup(FEL_ORC);
+    if (state.kind !== 'ready' || state.info.kind !== 'quest') throw new Error(state.kind);
+    expect(state.info.name).toBe('Fel Orc Scavengers');
+    expect(state.info.chain.map((step) => step.quests[0].name)).toEqual(['Know your Enemy', 'Fel Orc Scavengers', 'Ill Omens']);
+    expect(state.info.commentTotal).toBe(21);
+  });
+
+  it("shows the quest tooltip's name, with the quest icon, when the page stays blocked", async () => {
+    const { client } = setup({
+      [FEL_ORC.url]: blocked(FEL_ORC.url),
+      [FEL_ORC_TOOLTIP_URL]: ok(FEL_ORC_TOOLTIP_URL, fixture('tooltip-quest-10482.json')),
+    });
+    expect(await client.lookup(FEL_ORC)).toEqual({
+      kind: 'error', link: FEL_ORC, message: MESSAGES.blocked,
+      header: { kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'quest-start' },
+    });
+  });
+
+  it('keeps a quest and an item with the same number apart', async () => {
+    const sameNumber = link('https://www.wowhead.com/tbc/item=10482');
+    const { client, asked } = setup({ [FEL_ORC.url]: felOrcPage(), [ZONES_URL]: zones() });
+    expect((await client.lookup(FEL_ORC)).kind).toBe('ready');
+    asked.length = 0;
+    await client.lookup(sameNumber);
+    expect(asked).toContain(sameNumber.url);
   });
 
   it('asks the tooltip service in the link language', async () => {

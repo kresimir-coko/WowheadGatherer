@@ -2,6 +2,8 @@ import type { LookupInfo, PageHeader, PopupState } from '../shared/types';
 import type { LookupKind, WowheadLink } from '../shared/wowheadLink';
 import type { DiskCache } from './cache';
 import { buildItemInfo } from './itemInfo';
+import { buildQuestInfo } from './questInfo';
+import { parseQuestPage } from './questPage';
 import { isCompletePage, parseItemPage } from './wowheadPage';
 import { parseZoneNames, type ZoneNames } from './zones';
 
@@ -27,6 +29,8 @@ export const PAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const ZONES_MAX_AGE_MS = 7 * PAGE_MAX_AGE_MS;
 /** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`. */
 const CACHE_VERSION = 2;
+/** Wowhead's icon for quests; its tooltip service gives quests none. */
+const QUEST_ICON = 'quest-start';
 
 const PAGE_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -53,7 +57,7 @@ export class WowheadClient {
 
   /** What the popup should show for a link. Never rejects. */
   async lookup(link: WowheadLink): Promise<PopupState> {
-    const key = `item-v${CACHE_VERSION}-${link.site || 'retail'}-${link.lang || 'en'}-${link.id}`;
+    const key = `${link.kind}-v${CACHE_VERSION}-${link.site || 'retail'}-${link.lang || 'en'}-${link.id}`;
     const cached = this.deps.cache.get<LookupInfo>(key, PAGE_MAX_AGE_MS, this.now());
     if (cached) return { kind: 'ready', link, info: cached };
 
@@ -62,7 +66,7 @@ export class WowheadClient {
       return { kind: 'error', link, message: MESSAGES.notFound(link.kind, link.id), header: null };
     }
     if (page.kind === 'html') {
-      const info = buildItemInfo(link.id, parseItemPage(page.html), await this.zoneNames(link));
+      const info = await this.read(link, page.html);
       if (info) {
         this.deps.cache.set(key, info, this.now());
         return { kind: 'ready', link, info };
@@ -70,6 +74,14 @@ export class WowheadClient {
     }
     const message = page.kind === 'offline' ? MESSAGES.offline : page.kind === 'blocked' ? MESSAGES.blocked : MESSAGES.changed;
     return { kind: 'error', link, message, header: await this.header(link) };
+  }
+
+  /** Reads a page with the reader for the link's kind; null when it doesn't hold what the link points at. */
+  private async read(link: WowheadLink, html: string): Promise<LookupInfo | null> {
+    const zones = await this.zoneNames(link);
+    return link.kind === 'quest'
+      ? buildQuestInfo(link.id, parseQuestPage(html), zones)
+      : buildItemInfo(link.id, parseItemPage(html), zones);
   }
 
   private async fetchPage(link: WowheadLink): Promise<PageResult> {
@@ -114,7 +126,7 @@ export class WowheadClient {
         kind: link.kind,
         name: data.name,
         quality: typeof data.quality === 'number' ? data.quality : 1,
-        icon: typeof data.icon === 'string' ? data.icon : '',
+        icon: typeof data.icon === 'string' ? data.icon : link.kind === 'quest' ? QUEST_ICON : '',
       };
     } catch {
       return null;
