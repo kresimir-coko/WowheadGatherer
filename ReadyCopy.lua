@@ -1,12 +1,12 @@
 local _, ns = ...
 
--- One-press copy. While Ctrl is held over an item, a hidden edit box holds the
--- item's Wowhead link, selected and with keyboard focus, so the C of Ctrl+C
+-- One-press copy. While Ctrl is held over an item or quest, a hidden edit box
+-- holds its Wowhead link, selected and with keyboard focus, so the C of Ctrl+C
 -- copies it straight away. The game's edit box does the copying; the add-on
 -- never touches the clipboard (CopyToClipboard is Blizzard-only).
 --
 -- Key bindings don't fire while the box has focus, so a Ctrl+key binding
--- pressed over an item would be used up. That's why the box is never readied
+-- pressed over an item or quest would be used up. That's why the box is never readied
 -- in combat or over action buttons, and lets go of focus on any other key.
 
 -- Keys whose press readies the link and whose release lets it go. Ctrl copies
@@ -17,6 +17,8 @@ local watcher = ns.CreateCopyWatcher()
 local box
 -- The link in the box while it's readied, or nil.
 local readyURL
+-- What the box holds: "item" or "quest", and its ID.
+local readyKind, readyID
 -- Set when a key other than C, or Escape, gave the focus back. Bag tooltips
 -- refresh every 0.2 s while hovered, and that mustn't take the focus again
 -- until Ctrl is pressed anew.
@@ -69,8 +71,15 @@ local function CreateReadyBox()
         end
     end)
     editBox:SetScript("OnEditFocusLost", function()
-        readyURL = nil
+        readyURL, readyKind, readyID = nil, nil, nil
         watcher.Reset()
+    end)
+    -- A quest has no tooltip that closes when the cursor leaves it, so check
+    -- each frame that it's still under the cursor.
+    editBox:SetScript("OnUpdate", function()
+        if readyKind == "quest" and ns.GetHoveredQuest() ~= readyID then
+            ns:UnreadyCopy()
+        end
     end)
     return editBox
 end
@@ -90,25 +99,32 @@ function ns:CanReadyCopy()
     if focus and focus ~= box then
         return false
     end
-    return not IsActionButton(GameTooltip:GetOwner())
+    -- Ctrl+number over an action button is a key binding, not a copy. Only a
+    -- shown tooltip says what's under the cursor; a closed one keeps its last owner.
+    return not (GameTooltip:IsShown() and IsActionButton(GameTooltip:GetOwner()))
 end
 
--- Readies the hovered item's link, or lets go when there's nothing to ready.
+-- Readies the link of the item or quest under the cursor, or lets go when
+-- there's nothing to ready.
 function ns:ReadyCopy()
-    local itemID = self:CanReadyCopy() and ns.GetHoveredItem()
-    if not itemID then
+    local kind, id
+    if self:CanReadyCopy() then
+        kind, id = ns.GetHovered()
+    end
+    if not id then
         self:UnreadyCopy()
         return
     end
     box = box or CreateReadyBox()
-    readyURL = ns.BuildItemURL(itemID, WOW_PROJECT_ID, self:GetWowheadLocale())
+    readyKind, readyID = kind, id
+    readyURL = ns.BuildURL(kind, id, WOW_PROJECT_ID, self:GetWowheadLocale())
     box:SetText(readyURL)
     box:SetFocus()
     box:HighlightText()
 end
 
 function ns:UnreadyCopy()
-    readyURL = nil
+    readyURL, readyKind, readyID = nil, nil, nil
     if box and box:HasFocus() then
         box:ClearFocus()
     end
@@ -119,11 +135,22 @@ function ns:GetReadyURL()
     return readyURL
 end
 
-local function OnItemTooltip(tooltip)
-    -- Moving to another item while still holding Ctrl readies that one.
-    if tooltip == GameTooltip and IsReadyKeyDown() and not letGo then
+-- Moving onto another item or quest while still holding Ctrl readies that one.
+local function ReadyIfHeld()
+    if IsReadyKeyDown() and not letGo then
         ns:ReadyCopy()
     end
+end
+
+local function OnItemTooltip(tooltip)
+    if tooltip == GameTooltip then
+        ReadyIfHeld()
+    end
+end
+
+-- Run by Quests.lua when a quest log title or tracker quest is entered.
+function ns:OnQuestEntered()
+    ReadyIfHeld()
 end
 
 -- Hooks the item tooltip. Classic clients have TooltipDataProcessor, but their

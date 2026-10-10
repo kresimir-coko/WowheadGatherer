@@ -211,3 +211,74 @@ def test_hooks_tooltip_data_on_mainline_clients():
     addon.fire("PLAYER_LOGIN")
     assert addon.run("return postCalls[Enum.TooltipDataType.Item] ~= nil") is True
     assert addon.run("return GameTooltip.hooks.OnTooltipSetItem == nil") is True
+
+
+FEL_ORC_URL = "https://www.wowhead.com/tbc/quest=10482"
+
+
+def hover_quest_title(addon, owner=None):
+    """Moves from the bag item to a TBC quest log title (Fel Orc Scavengers), announced
+    as Blizzard does. The game tooltip is closed; `owner` is its last owner."""
+    addon.g.GameTooltip = addon.tooltip(shown=False, owner=owner)
+    return addon.run("""
+        questLog = { { title = "Fel Orc Scavengers", questID = 10482, objectives = 1 } }
+        local button = FakeHoverable({ row = 1, mouseOver = true })
+        EventRegistry:TriggerEvent("QuestLogFrame.MouseOver", button, 1)
+        return button
+    """)
+
+
+def frame(addon):
+    """One frame of the game: the ready box's OnUpdate."""
+    box = ready_box(addon)
+    box.scripts.OnUpdate(box, 0.016)
+
+
+def test_holding_ctrl_over_a_quest_readies_its_link(addon):
+    hover_quest_title(addon)
+    hold_ctrl(addon)
+    assert ready_url(addon) == FEL_ORC_URL
+
+
+def test_entering_a_quest_while_holding_ctrl(addon):
+    hold_ctrl(addon)
+    hover_quest_title(addon)
+    assert ready_url(addon) == FEL_ORC_URL
+
+
+def test_leaving_the_quest_lets_go(addon):
+    # A quest has no tooltip that closes when the cursor leaves it.
+    button = hover_quest_title(addon)
+    hold_ctrl(addon)
+    assert ready_url(addon) == FEL_ORC_URL
+    button.mouseOver = False
+    frame(addon)
+    assert ready_url(addon) is None
+    assert addon.g.keyboardFocus is None
+
+
+def test_staying_on_the_quest_keeps_it_ready(addon):
+    hover_quest_title(addon)
+    hold_ctrl(addon)
+    frame(addon)
+    assert ready_url(addon) == FEL_ORC_URL
+
+
+def test_a_closed_tooltip_last_owned_by_an_action_button_does_not_matter(addon):
+    hover_quest_title(addon, owner=addon.lua.table_from({"action": 5}))
+    hold_ctrl(addon)
+    assert ready_url(addon) == FEL_ORC_URL
+
+
+def test_the_quest_check_leaves_items_alone(addon):
+    hold_ctrl(addon)
+    frame(addon)
+    assert ready_url(addon) == URL
+
+
+def test_ctrl_c_copies_a_quest(addon):
+    hover_quest_title(addon)
+    hold_ctrl(addon)
+    key(addon, "OnKeyDown", "C")
+    key(addon, "OnKeyUp", "C")
+    assert addon.values("flashes") == ["Wowhead link copied."]
