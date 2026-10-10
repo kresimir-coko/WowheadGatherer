@@ -129,9 +129,9 @@ const questLink = parseWowheadLink('https://www.wowhead.com/tbc/quest=10482')!;
 const quest: QuestInfo = {
   kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21,
   chain: [
-    { position: 1, quests: [{ name: 'Know your Enemy', current: false }] },
-    { position: 2, quests: [{ name: 'Fel Orc Scavengers', current: true }] },
-    { position: 3, quests: [{ name: 'Ill Omens', current: false }, { name: 'Shields', current: false }] },
+    { position: 1, quests: [{ id: 10160, name: 'Know your Enemy', current: false }] },
+    { position: 2, quests: [{ id: 10482, name: 'Fel Orc Scavengers', current: true }] },
+    { position: 3, quests: [{ id: 10483, name: 'Ill Omens', current: false }, { id: 0, name: 'Shields', current: false }] },
   ],
   comments: [{ user: 'Lustral', rating: 12, date: 'Jan 2008', body: [{ kind: 'text', text: 'North of Honor Hold.' }] }],
 };
@@ -167,7 +167,7 @@ describe('renderState for quests', () => {
 
   it('never turns quest names into HTML', () => {
     const evil = '<img src=x onerror=alert(1)>';
-    show({ kind: 'ready', link: questLink, info: { ...quest, chain: [{ position: 1, quests: [{ name: evil, current: true }] }] } });
+    show({ kind: 'ready', link: questLink, info: { ...quest, chain: [{ position: 1, quests: [{ id: 10482, name: evil, current: true }] }] } });
     expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
     expect(text('.chain .current')).toBe(evil);
   });

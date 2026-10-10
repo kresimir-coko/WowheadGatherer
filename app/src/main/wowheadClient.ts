@@ -27,8 +27,8 @@ export interface ClientDeps {
 export const PAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 /** How long the zone names stay fresh, in milliseconds. */
 export const ZONES_MAX_AGE_MS = 7 * PAGE_MAX_AGE_MS;
-/** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`. */
-const CACHE_VERSION = 2;
+/** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`; 3: every comment, quest IDs. */
+const CACHE_VERSION = 3;
 
 const PAGE_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

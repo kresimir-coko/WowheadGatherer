@@ -146,6 +146,13 @@ describe('WowheadClient', () => {
     expect(state).toMatchObject({ kind: 'ready', info: { kind: 'item' } });
   });
 
+  it('leaves lookups cached before every comment was kept alone', async () => {
+    const { client, asked, cache } = setup({ [GOREHOWL.url]: gorehowlPage(), [ZONES_URL]: zones() });
+    cache.set('item-v2-tbc-en-28773', { kind: 'item', name: 'Gorehowl', quality: 4, icon: 'inv_axe_60', sections: [], comments: [], commentTotal: 0 });
+    await client.lookup(GOREHOWL);
+    expect(asked).toContain(GOREHOWL.url);
+  });
+
   it('names the kind in the not-found message', () => {
     expect(MESSAGES.notFound('quest', 10482)).toBe("Wowhead doesn't know quest 10482.");
   });

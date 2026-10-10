@@ -7,9 +7,9 @@ describe('parseQuestPage', () => {
     const page = parseQuestPage(fixture('quest-10482.html.gz'));
     expect(page.name).toBe('Fel Orc Scavengers');
     expect(page.chain).toEqual([
-      { position: 1, quests: [{ name: 'Know your Enemy', current: false }] },
-      { position: 2, quests: [{ name: 'Fel Orc Scavengers', current: true }] },
-      { position: 3, quests: [{ name: 'Ill Omens', current: false }] },
+      { position: 1, quests: [{ id: 10160, name: 'Know your Enemy', current: false }] },
+      { position: 2, quests: [{ id: 0, name: 'Fel Orc Scavengers', current: true }] },
+      { position: 3, quests: [{ id: 10483, name: 'Ill Omens', current: false }] },
     ]);
     expect(page.data.comments).toHaveLength(21);
   });
@@ -17,8 +17,8 @@ describe('parseQuestPage', () => {
   it('reads a long chain (Arrival in Outland, step 7 of 9)', () => {
     const { chain } = parseQuestPage(fixture('quest-10288.html.gz'));
     expect(chain).toHaveLength(9);
-    expect(chain[0].quests[0].name).toBe('A New Beginning');
-    expect(chain[6]).toEqual({ position: 7, quests: [{ name: 'Arrival in Outland', current: true }] });
+    expect(chain[0].quests[0]).toEqual({ id: 64028, name: 'A New Beginning', current: false });
+    expect(chain[6]).toEqual({ position: 7, quests: [{ id: 0, name: 'Arrival in Outland', current: true }] });
     expect(chain.filter((step) => step.quests.some((quest) => quest.current))).toHaveLength(1);
   });
 
@@ -42,8 +42,8 @@ describe('parseQuestPage', () => {
     const page = parseQuestPage(html);
     expect(page.name).toBe("Lieutenant's Orders");
     expect(page.chain).toEqual([
-      { position: 1, quests: [{ name: 'Arms & Armor', current: false }, { name: 'Shields', current: false }] },
-      { position: 2, quests: [{ name: "Lieutenant's Orders", current: true }] },
+      { position: 1, quests: [{ id: 1, name: 'Arms & Armor', current: false }, { id: 2, name: 'Shields', current: false }] },
+      { position: 2, quests: [{ id: 0, name: "Lieutenant's Orders", current: true }] },
     ]);
   });
 

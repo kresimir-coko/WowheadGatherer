@@ -63,14 +63,41 @@ describe('buildItemInfo', () => {
 
   it('Refreshing Spring Water: vendors with price and side, quests with level and side', () => {
     expect(info(159).sections.map((s) => s.title)).toEqual([
-      'Dropped by', 'Sold by', 'Quest reward', 'Contained in', 'Mined from', 'Pickpocketed from',
+      'Needed for', 'Dropped by', 'Sold by', 'Quest reward', 'Contained in', 'Mined from', 'Pickpocketed from',
     ]);
     const soldBy = section(159, 'Sold by');
     expect(soldBy.total).toBe(200);
     expect(soldBy.rows[0]).toEqual({ name: 'Brog Hamfist', details: ['Elwynn Forest', '25c', 'Alliance'] });
+    expect(section(159, 'Needed for').rows[0]).toEqual({ name: 'Give Gerard a Drink', details: ['Level 1', 'Alliance'], questId: 16 });
     expect(section(159, 'Quest reward').rows[0]).toEqual({ name: "A Rogue's Deal", details: ['Level 5', 'Horde'] });
     expect(section(159, 'Pickpocketed from').rows.map((r) => r.details.at(-1))).toEqual(['1.5%', '0.86%', '9.1%']);
     expect(section(159, 'Mined from').rows[0]).toEqual({ name: 'Copper Vein', details: ['The Barrens, Dun Morogh +1', '<0.01%'] });
+  });
+
+  it("Magtheridon's Head: the quest it starts, listed once", () => {
+    const head = info(32385);
+    expect(head.sections[0]).toEqual({
+      title: 'Starts quest', total: 1,
+      rows: [{ name: 'The Fall of Magtheridon', details: ['Level 70', 'Alliance'], questId: 11002 }],
+    });
+    // Wowhead also lists it as needing the head; it isn't repeated.
+    expect(head.sections.map((s) => s.title)).not.toContain('Needed for');
+  });
+
+  it('Unidentified Plant Parts: the quests that need it, first', () => {
+    expect(info(24401).sections[0]).toEqual({
+      title: 'Needed for', total: 2,
+      rows: [
+        { name: 'Identify Plant Parts', details: ['Level 64'], questId: 9784 },
+        { name: 'Plants of Zangarmarsh', details: ['Level 63'], questId: 9802 },
+      ],
+    });
+  });
+
+  it("Duron's Report: needed for two quests, and no comments", () => {
+    const report = info(28105);
+    expect(report.sections[0].rows.map((row) => row.questId)).toEqual([10140, 10288]);
+    expect(report).toMatchObject({ comments: [], commentTotal: 0 });
   });
 
   it('Bolt of Netherweave: what it is crafted from', () => {

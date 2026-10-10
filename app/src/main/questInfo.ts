@@ -23,7 +23,11 @@ export function buildQuestInfo(questId: number, page: QuestPage, zones: ZoneName
     name: page.name ?? quest.name,
     quality: 1,
     icon: QUEST_ICON,
-    chain: page.chain,
+    // The page doesn't link the quest on show, so it gets the page's own ID.
+    chain: page.chain.map((step) => ({
+      ...step,
+      quests: step.quests.map((chainQuest) => (chainQuest.current ? { ...chainQuest, id: questId } : chainQuest)),
+    })),
     comments,
     commentTotal: total,
   };

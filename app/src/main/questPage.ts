@@ -18,15 +18,17 @@ const SERIES = /<table class="series">([\s\S]*?)<\/table>/;
 const STEP = /<tr>\s*<th>\s*(\d+)\.?\s*<\/th>\s*<td>([\s\S]*?)<\/td>\s*<\/tr>/g;
 const STEP_QUEST = /<div>([\s\S]*?)<\/div>/g;
 const TAG = /<[^>]*>/g;
+const QUEST_HREF = /href="[^"]*\/quest=(\d+)/i;
 
 /** The text in some HTML: tags dropped, entities decoded, spaces tidied. */
 function textOf(html: string): string {
   return decodeEntities(html.replace(TAG, '')).replace(/\s+/g, ' ').trim();
 }
 
-/** The quest on show is bold; the others are links to their pages. */
+/** The quest on show is bold; the others are links to their pages, which carry their IDs. */
 function readQuest(html: string): ChainQuest {
-  return { name: textOf(html), current: !/<a\b/i.test(html) && /<b>/i.test(html) };
+  const id = Number(QUEST_HREF.exec(html)?.[1] ?? 0);
+  return { id, name: textOf(html), current: !/<a\b/i.test(html) && /<b>/i.test(html) };
 }
 
 function readChain(html: string): ChainStep[] {

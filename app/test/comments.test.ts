@@ -11,10 +11,11 @@ function comment(over: Partial<RawComment>): RawComment {
 }
 
 describe('pickComments', () => {
-  it('picks the three best top-level comments (Thunderfury)', () => {
+  it('lists every top-level comment, best first (Thunderfury)', () => {
     const { comments, total } = pickComments(parseItemPage(fixture('item-19019.html.gz')), none);
     expect(total).toBe(350);
-    expect(comments.map((c) => c.rating)).toEqual([522, 283, 262]);
+    expect(comments).toHaveLength(350);
+    expect(comments.slice(0, 3).map((c) => c.rating)).toEqual([522, 283, 262]);
     expect(comments[0]).toMatchObject({ user: 'Koen', date: 'Dec 2006' });
   });
 

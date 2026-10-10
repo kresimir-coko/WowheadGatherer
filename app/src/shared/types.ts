@@ -5,6 +5,8 @@ export interface SourceRow {
   name: string;
   /** e.g. ["Karazhan", "18%"], shown joined with " · ". */
   details: string[];
+  /** The quest a Starts quest or Needed for row is about, which the player can open from the popup. */
+  questId?: number;
 }
 
 export interface SourceSection {
@@ -51,6 +53,8 @@ export interface ItemInfo extends PageHeader {
 
 /** One quest of a chain step, and whether it's the quest on show. */
 export interface ChainQuest {
+  /** Wowhead's quest ID; 0 when the page links none. */
+  id: number;
   name: string;
   current: boolean;
 }

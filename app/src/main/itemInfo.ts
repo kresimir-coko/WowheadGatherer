@@ -12,10 +12,13 @@ export const MIN_SAMPLE = 20;
 /** Zones named per row; more show as "+N". */
 const ZONES_PER_ROW = 2;
 
-type RowStyle = 'chance' | 'vendor' | 'quest' | 'crafted';
+type RowStyle = 'chance' | 'vendor' | 'quest' | 'crafted' | 'related-quest';
 
 /** The source tables shown, in order, by Wowhead's Listview IDs. Other tables are skipped. */
 const SECTIONS: { title: string; ids: string[]; style: RowStyle }[] = [
+  // A quest item's quests come first: for one, they're what matters.
+  { title: 'Starts quest', ids: ['starts'], style: 'related-quest' },
+  { title: 'Needed for', ids: ['objective-of'], style: 'related-quest' },
   { title: 'Dropped by', ids: ['dropped-by'], style: 'chance' },
   { title: 'Sold by', ids: ['sold-by'], style: 'vendor' },
   { title: 'Quest reward', ids: ['reward-from-q'], style: 'quest' },
@@ -126,7 +129,8 @@ function toRow(row: ListviewRow, style: RowStyle, page: ItemPage, zones: ZoneNam
       details = [zoneText(row, zones), costText(row.cost, page.gatherer), factionText(row.react)];
       break;
     case 'quest':
-      details = [num(row.level) ? `Level ${row.level}` : null, sideText(row.side)];
+    case 'related-quest':
+      details =[num(row.level) ? `Level ${row.level}` : null, sideText(row.side)];
       break;
     case 'crafted': {
       const reagents = itemCounts(row.reagents, page.gatherer);
@@ -134,13 +138,21 @@ function toRow(row: ListviewRow, style: RowStyle, page: ItemPage, zones: ZoneNam
       break;
     }
   }
-  return { name: row.name, details: details.filter((detail): detail is string => detail !== null) };
+  const shown = details.filter((detail): detail is string => detail !== null);
+  const questId = style === 'related-quest' ? num(row.id) : undefined;
+  return questId ? { name: row.name, details: shown, questId } : { name: row.name, details: shown };
 }
 
 function buildSections(page: ItemPage, zones: ZoneNames): SourceSection[] {
   const sections: SourceSection[] = [];
+  // Quests already listed aren't listed again: Magtheridon's Head starts and needs the same one.
+  const listedQuests = new Set<unknown>();
   for (const { title, ids, style } of SECTIONS) {
-    const rows = ids.flatMap((id) => page.listviews.get(id) ?? []);
+    let rows = ids.flatMap((id) => page.listviews.get(id) ?? []);
+    if (style === 'related-quest') {
+      rows = rows.filter((row) => !listedQuests.has(row.id));
+      for (const row of rows) listedQuests.add(row.id);
+    }
     if (rows.length === 0) continue;
     // Vendors, quests and recipes keep Wowhead's order.
     const ordered = style === 'chance' ? [...rows].sort(byChance) : rows;

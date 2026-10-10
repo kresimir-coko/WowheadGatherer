@@ -13,7 +13,9 @@ describe('buildQuestInfo', () => {
     // The page names its icon "quest-start", but Wowhead's image server has no such file.
     expect(quest).toMatchObject({ kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21 });
     expect(quest?.chain).toHaveLength(3);
-    expect(quest?.comments).toHaveLength(3);
+    expect(quest?.comments).toHaveLength(21);
+    // The page links every chain quest but the one on show; it gets the page's own ID.
+    expect(quest?.chain[1].quests[0]).toEqual({ id: 10482, name: 'Fel Orc Scavengers', current: true });
   });
 
   it('takes the name from the heading, in the page language', () => {
