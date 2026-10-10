@@ -110,6 +110,7 @@ function FakeTooltip(o)
     function tooltip:HasScript(script) return script == "OnTooltipSetItem" or script == "OnHide" end
     function tooltip:HookScript(script, func) self.hooks[script] = func end
     function tooltip:GetOwner() return o.owner end
+    function tooltip:SetHyperlink(link) self.hyperlink = link end
     return tooltip
 end
 
@@ -171,6 +172,70 @@ SlashCmdList = {}
 
 -- A hidden tooltip, so code that hooks GameTooltip at login always finds one.
 GameTooltip = FakeTooltip({ shown = false })
+
+-- hooksecurefunc([table,] name, hook): the hook runs after the original, with its arguments.
+function hooksecurefunc(target, name, hook)
+    if type(target) == "string" then
+        target, name, hook = _G, target, name
+    end
+    local original = target[name]
+    target[name] = function(...)
+        local results = { original(...) }
+        hook(...)
+        return unpack(results)
+    end
+end
+
+-- EventRegistry calls a callback registered with an owner as func(owner, ...)
+-- (Blizzard_SharedXMLBase/CallbackRegistry.lua).
+EventRegistry = { callbacks = {} }
+function EventRegistry:RegisterCallback(event, func, owner)
+    self.callbacks[event] = self.callbacks[event] or {}
+    table.insert(self.callbacks[event], { func = func, owner = owner })
+end
+function EventRegistry:TriggerEvent(event, ...)
+    for _, callback in ipairs(self.callbacks[event] or {}) do
+        callback.func(callback.owner, ...)
+    end
+end
+
+-- A button, block or text line the cursor can be over. Fields: shown (default
+-- true), mouseOver, row (what GetID returns), and any others the code reads.
+function FakeHoverable(o)
+    function o:IsShown() return self.shown ~= false end
+    function o:IsVisible() return self.shown ~= false end
+    function o:IsMouseOver() return self.mouseOver == true end
+    function o:GetID() return self.row end
+    return o
+end
+
+-- TBC's quest log: questLog[index] = { title, questID, isHeader, objectives },
+-- scrolled down questLogOffset rows. GetQuestLogTitle returns what TBC's
+-- QuestLogFrame.lua reads: title, level, tag, isHeader, collapsed, complete, frequency, questID.
+questLog = {}
+questLogOffset = 0
+QuestLogListScrollFrame = {}
+function FauxScrollFrame_GetOffset() return questLogOffset end
+function GetQuestLogTitle(index)
+    local quest = questLog[index]
+    if not quest then return nil end
+    return quest.title, 70, nil, quest.isHeader == true, false, nil, 0, quest.questID
+end
+-- TBC's tracker: the quest log indexes watched, in order, and its 30 lines.
+questWatches = {}
+function GetNumQuestWatches() return #questWatches end
+function GetQuestIndexForWatch(i) return questWatches[i] end
+function GetNumQuestLeaderBoards(index) return questLog[index] and questLog[index].objectives or 0 end
+function QuestWatch_Update() end
+QuestWatchFrame = FakeHoverable({})
+for i = 1, 30 do
+    _G["QuestWatchLine" .. i] = FakeHoverable({ shown = false })
+end
+-- Quest names the client knows, by ID. TBC names them with C_QuestLog.GetQuestInfo.
+questTitles = {}
+C_QuestLog = { GetQuestInfo = function(questID) return questTitles[questID] end }
+-- A closed chat-link tooltip, so code that hooks it at login always finds one.
+ItemRefTooltip = FakeTooltip({ shown = false })
 """
 
 

@@ -41,3 +41,17 @@ function ns.GetHoveredItem()
         end
     end
 end
+
+-- Returns what's under the cursor: "item" or "quest", its ID, and the item's
+-- link or the quest's name (either can be nil). Nil when it's neither. Items
+-- come first, so a quest log open behind a bag doesn't take over.
+function ns.GetHovered()
+    local itemID, link = ns.GetHoveredItem()
+    if itemID then
+        return "item", itemID, link
+    end
+    local questID, title = ns.GetHoveredQuest()
+    if questID then
+        return "quest", questID, title
+    end
+end

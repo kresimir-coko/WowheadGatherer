@@ -9,6 +9,7 @@
 Core.lua
 Url.lua
 Lookup.lua
+Quests.lua
 Keybinding.lua
 Popup.lua
 ReadyCopy.lua

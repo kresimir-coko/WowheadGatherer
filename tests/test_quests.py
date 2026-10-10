@@ -1,0 +1,196 @@
+import pytest
+
+THUNDERFURY = "|cffff8000|Hitem:19019::::::::70:::::|h[Thunderfury, Blessed Blade of the Windseeker]|h|r"
+FEL_ORC = (10482, "Fel Orc Scavengers")
+KNOW_YOUR_ENEMY = (10160, "Know your Enemy")
+
+
+def log_in(addon):
+    addon.load_all()
+    addon.fire("ADDON_LOADED", "WowheadGatherer")
+    addon.fire("PLAYER_LOGIN")
+
+
+@pytest.fixture
+def tbc(addon):
+    """TBC, logged in, with a zone header and two quests in the quest log."""
+    addon.run("""
+        questLog = {
+            { title = "Hellfire Peninsula", isHeader = true },
+            { title = "Fel Orc Scavengers", questID = 10482, objectives = 1 },
+            { title = "Know your Enemy", questID = 10160, objectives = 2 },
+        }
+    """)
+    log_in(addon)
+    return addon
+
+
+def hovered(addon):
+    return addon.run("return ns.GetHoveredQuest()")
+
+
+def enter_log_title(addon, row):
+    """Hovers the quest log title on `row`, announced the way TBC's QuestLogFrame.lua does."""
+    return addon.run(f"""
+        local button = FakeHoverable({{ row = {row}, mouseOver = true }})
+        EventRegistry:TriggerEvent("QuestLogFrame.MouseOver", button, {row} + questLogOffset)
+        return button
+    """)
+
+
+def test_quest_log_title(tbc):
+    enter_log_title(tbc, 2)
+    assert hovered(tbc) == FEL_ORC
+
+
+def test_zone_header_is_not_a_quest(tbc):
+    enter_log_title(tbc, 1)
+    assert hovered(tbc) is None
+
+
+def test_leaving_the_title(tbc):
+    button = enter_log_title(tbc, 2)
+    button.mouseOver = False
+    assert hovered(tbc) is None
+
+
+def test_closing_the_quest_log(tbc):
+    button = enter_log_title(tbc, 2)
+    button.shown = False
+    assert hovered(tbc) is None
+
+
+def test_follows_a_wheel_scroll(tbc):
+    # The wheel scrolls the list under a still cursor: the same title button now shows the next quest.
+    enter_log_title(tbc, 2)
+    tbc.g.questLogOffset = 1
+    assert hovered(tbc) == KNOW_YOUR_ENEMY
+
+
+def watch_both_quests(addon):
+    # Lines: 1 Fel Orc Scavengers, 2 its objective, 3 Know your Enemy, 4 and 5 its objectives.
+    addon.run("questWatches = { 2, 3 }; QuestWatch_Update()")
+
+
+def hover_line(addon, line):
+    addon.run(f"QuestWatchLine{line}.shown = true; QuestWatchLine{line}.mouseOver = true")
+
+
+@pytest.mark.parametrize("line, quest", [(1, FEL_ORC), (2, FEL_ORC), (3, KNOW_YOUR_ENEMY), (5, KNOW_YOUR_ENEMY)])
+def test_tracker_lines(tbc, line, quest):
+    watch_both_quests(tbc)
+    hover_line(tbc, line)
+    assert hovered(tbc) == quest
+
+
+def test_tracker_line_past_the_last_quest(tbc):
+    watch_both_quests(tbc)
+    hover_line(tbc, 6)
+    assert hovered(tbc) is None
+
+
+def test_hidden_tracker(tbc):
+    # Questie's tracker hides Blizzard's.
+    watch_both_quests(tbc)
+    hover_line(tbc, 1)
+    tbc.g.QuestWatchFrame.shown = False
+    assert hovered(tbc) is None
+
+
+def test_tracker_skips_quests_without_objectives(tbc):
+    # QuestWatch_Update gives a quest with no objectives no lines at all.
+    tbc.run("questLog[2].objectives = 0")
+    watch_both_quests(tbc)
+    hover_line(tbc, 1)
+    assert hovered(tbc) == KNOW_YOUR_ENEMY
+
+
+@pytest.fixture
+def chat_link(addon):
+    """A clicked chat link for Fel Orc Scavengers, its tooltip under the cursor."""
+    addon.g.ItemRefTooltip = addon.tooltip(mouseOver=True)
+    addon.g.questTitles[10482] = "Fel Orc Scavengers"
+    log_in(addon)
+    addon.run('ItemRefTooltip:SetHyperlink("quest:10482:58")')
+    return addon
+
+
+def test_chat_quest_link(chat_link):
+    assert hovered(chat_link) == FEL_ORC
+
+
+def test_chat_link_not_hovered(addon):
+    addon.g.ItemRefTooltip = addon.tooltip(mouseOver=False)
+    log_in(addon)
+    addon.run('ItemRefTooltip:SetHyperlink("quest:10482:58")')
+    assert hovered(addon) is None
+
+
+def test_chat_link_replaced_by_an_item(chat_link):
+    chat_link.run('ItemRefTooltip:SetHyperlink("item:19019")')
+    assert hovered(chat_link) is None
+
+
+@pytest.fixture
+def forever(addon):
+    """WoW Forever: the mainline quest functions, and none of TBC's quest log or tracker."""
+    addon.run("""
+        WOW_PROJECT_ID = 18
+        GetQuestLogTitle, FauxScrollFrame_GetOffset, QuestLogListScrollFrame = nil, nil, nil
+        QuestWatch_Update, QuestWatchFrame = nil, nil
+        for i = 1, 30 do _G["QuestWatchLine" .. i] = nil end
+        questTitles[10482] = "Fel Orc Scavengers"
+        C_QuestLog = { GetTitleForQuestID = function(questID) return questTitles[questID] end }
+    """)
+    log_in(addon)
+    return addon
+
+
+def test_forever_logs_in_without_tbc_quest_functions(forever):
+    assert hovered(forever) is None
+
+
+def test_forever_quest_list_title(forever):
+    forever.run("""
+        local button = FakeHoverable({ mouseOver = true, questID = 10482 })
+        EventRegistry:TriggerEvent("QuestMapLogTitleButton.OnEnter", button, 10482)
+    """)
+    assert hovered(forever) == FEL_ORC
+
+
+def test_forever_tracker_quest(forever):
+    forever.run("""
+        local block = FakeHoverable({ mouseOver = true, id = 10482 })
+        EventRegistry:TriggerEvent("OnQuestBlockHeader.OnEnter", block, 10482, false)
+    """)
+    assert hovered(forever) == FEL_ORC
+
+
+def test_forever_leaving_the_tracker(forever):
+    forever.run("""
+        local block = FakeHoverable({ mouseOver = true, id = 10482 })
+        EventRegistry:TriggerEvent("OnQuestBlockHeader.OnEnter", block, 10482, false)
+        block.mouseOver = false
+    """)
+    assert hovered(forever) is None
+
+
+def test_items_come_before_quests(tbc):
+    tbc.g.GameTooltip = tbc.tooltip(legacyLink=THUNDERFURY)
+    enter_log_title(tbc, 2)
+    assert tbc.run("return ns.GetHovered()") == ("item", 19019, THUNDERFURY)
+
+
+def test_a_quest_when_no_item_is_hovered(tbc):
+    enter_log_title(tbc, 2)
+    assert tbc.run("return ns.GetHovered()") == ("quest", 10482, "Fel Orc Scavengers")
+
+
+def test_nothing_hovered(tbc):
+    assert tbc.run("return ns.GetHovered()") is None
+
+
+def test_entering_a_quest_tells_the_ready_copy(tbc):
+    tbc.run("entered = 0; function ns:OnQuestEntered() entered = entered + 1 end")
+    enter_log_title(tbc, 2)
+    assert tbc.g.entered == 1

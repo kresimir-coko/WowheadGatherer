@@ -105,6 +105,7 @@ function ns:PLAYER_LOGIN()
     -- Every add-on's Bindings.xml is loaded by now, so the options page can
     -- show the lookup key.
     self:InitializeOptions()
+    self:InitializeQuests()
     self:InitializeReadyCopy()
 end
 
