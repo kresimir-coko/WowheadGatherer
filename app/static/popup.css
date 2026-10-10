@@ -1,49 +1,89 @@
-:root {
-  color-scheme: dark;
-  --bg: #0b0e17;
-  --panel: #121725;
-  --line: #1c2232;
-  --border: #3b4258;
-  --text: #e6e6e6;
-  --muted: #9aa3b5;
-  --accent: #ffd100;
-  --error: #ff6b6b;
-  font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+/* Blizzard's modern panel look (dark brown, gold-brown rims, gold headings, red
+   buttons), drawn in CSS: no game artwork is copied. Marcellus (SIL Open Font
+   License) stands in for the game's Friz Quadrata, which is a paid font. */
+@font-face {
+  font-family: 'Marcellus';
+  src: url('fonts/Marcellus-Regular.ttf') format('truetype');
 }
 
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
+:root {
+  color-scheme: dark;
+  --frame-centre: #3b1f12;
+  --frame-edge: #130b07;
+  --rim: #5c4a35;
+  --inset: rgba(0, 0, 0, 0.25);
+  --inset-rim: #4a3a2a;
+  --gold: #ffd100;
+  --text: #ffffff;
+  --muted: #b5a98f;
+  --error: #ff4040;
+  --button-top: #a01010;
+  --button-bottom: #5a0505;
+  --button-rim: #8c7b5a;
+  font: 14px/1.4 'Marcellus', Georgia, serif;
+}
+
+/* The window is see-through, so the frame's rounded corners show the game behind. */
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; color: var(--text); }
 
 #popup {
   box-sizing: border-box;
   max-height: 100vh;
   overflow-y: auto;
   padding: 10px 12px 12px;
-  border: 1px solid var(--border);
+  /* A thin black edge, with the gold-brown rim just inside it. */
+  border: 1px solid #000;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--rim);
+  background: radial-gradient(ellipse at 50% 40%, var(--frame-centre), var(--frame-edge) 85%);
 }
+#popup::-webkit-scrollbar { width: 8px; }
+#popup::-webkit-scrollbar-track { margin: 6px 0; background: rgba(0, 0, 0, 0.3); border-radius: 4px; }
+#popup::-webkit-scrollbar-thumb { background: var(--rim); border-radius: 4px; }
 
-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.icon { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 3px; }
-h1 { flex: 1; margin: 0; font-size: 15px; font-weight: 600; }
+header { display: flex; align-items: center; gap: 8px; }
+.icon { width: 36px; height: 36px; border: 1px solid var(--inset-rim); border-radius: 4px; box-shadow: 0 0 0 1px #000; }
+h1 { flex: 1; margin: 0; font-size: 17px; font-weight: normal; text-shadow: 1px 1px 0 #000; }
+.quest { color: var(--gold); }
 
+/* The game's red panel buttons, gold text on red with a light rim. */
 button {
-  font: inherit; color: var(--text); background: #1c2233;
-  border: 1px solid var(--border); border-radius: 3px; padding: 3px 8px; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--gold); cursor: pointer;
+  padding: 3px 10px;
+  background: linear-gradient(to bottom, var(--button-top), var(--button-bottom));
+  border: 1px solid var(--button-rim); border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 1px #000;
+  text-shadow: 1px 1px 0 #000;
 }
-button:hover { border-color: var(--accent); }
-.close { padding: 3px 7px; }
+button:hover { background: linear-gradient(to bottom, #c01818, #700808); }
+button:active { background: linear-gradient(to bottom, var(--button-bottom), var(--button-top)); }
+.close { width: 22px; height: 22px; padding: 0; font-size: 16px; line-height: 20px; }
 
-h2 { margin: 10px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+/* Each block sits in its own inset panel, like the boxes on Blizzard's settings pages. */
+section {
+  margin-top: 8px; padding: 6px 10px 8px;
+  background: var(--inset); border: 1px solid var(--inset-rim); border-radius: 6px;
+}
+h2 { margin: 0 0 4px; font-size: 14px; font-weight: normal; color: var(--gold); text-shadow: 1px 1px 0 #000; }
 ul { list-style: none; margin: 0; padding: 0; }
-li { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border-bottom: 1px solid var(--line); }
+li { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+li + li { border-top: 1px solid rgba(92, 74, 53, 0.35); }
 .details { color: var(--muted); text-align: right; }
 .more { color: var(--muted); font-style: italic; }
 
-.status { color: var(--muted); }
+/* Marcellus has one weight, and a faked bold smears it, so the quest on show is just gold. */
+.chain li { justify-content: flex-start; gap: 6px; }
+.chain .position { min-width: 1.6em; color: var(--muted); text-align: right; }
+.chain .current { color: var(--gold); }
+
+.status { margin: 8px 0 0; color: var(--muted); }
 .status.error { color: var(--error); }
 
-.comment { margin-top: 6px; padding: 6px 8px; background: var(--panel); border-radius: 3px; }
-.meta { margin: 0 0 3px; color: var(--muted); font-size: 11px; }
-.body blockquote { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--border); color: var(--muted); }
+/* The comments block is a heading; each comment is its own panel. */
+section.comments { padding: 0; background: none; border: none; }
+.comment { margin-top: 6px; padding: 6px 8px; background: var(--inset); border: 1px solid var(--inset-rim); border-radius: 6px; }
+.meta { margin: 0 0 3px; color: var(--gold); font-size: 12px; opacity: 0.85; }
+.body blockquote { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--rim); color: var(--muted); }
 .list-item::before { content: "• "; }
 
 /* Item quality colours, as in the game. */

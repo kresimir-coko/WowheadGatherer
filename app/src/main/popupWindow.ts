@@ -29,7 +29,9 @@ export class Popup {
       skipTaskbar: true,
       // Clicking it doesn't take the keyboard from the game.
       focusable: false,
-      backgroundColor: '#0b0e17',
+      // See-through, so the frame's rounded corners show the game behind them.
+      transparent: true,
+      backgroundColor: '#00000000',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,
