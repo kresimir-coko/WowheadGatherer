@@ -25,9 +25,10 @@ local LANGUAGE_PATHS = {
     zhTW = "tw",
 }
 
--- Builds an item's Wowhead address, e.g. https://www.wowhead.com/tbc/de/item=19019.
--- Wowhead redirects it to the page with the item's name in the address.
-function ns.BuildItemURL(itemID, projectID, locale)
+-- Builds the Wowhead address of an item or a quest (kind "item" or "quest"),
+-- e.g. https://www.wowhead.com/tbc/de/quest=10482. Wowhead redirects it to the
+-- page with the name in the address.
+function ns.BuildURL(kind, id, projectID, locale)
     local url = ns.WOWHEAD_ROOT
     local site = SITE_PATHS[projectID]
     if site and site ~= "" then
@@ -37,7 +38,12 @@ function ns.BuildItemURL(itemID, projectID, locale)
     if language then
         url = url .. language .. "/"
     end
-    return url .. "item=" .. itemID
+    return url .. kind .. "=" .. id
+end
+
+-- An item's Wowhead address, e.g. https://www.wowhead.com/tbc/de/item=19019.
+function ns.BuildItemURL(itemID, projectID, locale)
+    return ns.BuildURL("item", itemID, projectID, locale)
 end
 
 -- Returns the item ID and name in an item link ("|Hitem:19019:...|h[Name]|h"),
@@ -51,4 +57,18 @@ function ns.ParseItemLink(link)
         return nil
     end
     return itemID, link:match("|h%[(.-)%]|h")
+end
+
+-- Returns the quest ID and name in a quest link ("|Hquest:10482:58|h[Name]|h"),
+-- or just the ID from a bare "quest:10482:58" string, which is what
+-- ItemRefTooltip:SetHyperlink gets. Nil when there's no quest ID.
+function ns.ParseQuestLink(link)
+    if type(link) ~= "string" then
+        return nil
+    end
+    local questID = tonumber(link:match("^quest:(%d+)") or link:match("|Hquest:(%d+)"))
+    if not questID then
+        return nil
+    end
+    return questID, link:match("|h%[(.-)%]|h")
 end

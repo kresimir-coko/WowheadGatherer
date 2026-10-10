@@ -64,3 +64,35 @@ def test_parse_ignores_spell_links(ns):
 
 def test_parse_ignores_nil(ns):
     assert ns.ParseItemLink(None) is None
+
+
+FEL_ORC = "|cffffff00|Hquest:10482:58|h[Fel Orc Scavengers]|h|r"
+
+
+def test_quest_address(ns):
+    assert ns.BuildURL("quest", 10482, TBC, "enUS") == "https://www.wowhead.com/tbc/quest=10482"
+
+
+def test_quest_address_in_german_on_forever(ns):
+    assert ns.BuildURL("quest", 10482, FOREVER, "deDE") == "https://www.wowhead.com/forever/de/quest=10482"
+
+
+def test_item_address_through_build_url(ns):
+    assert ns.BuildURL("item", 19019, TBC, "enUS") == ns.BuildItemURL(19019, TBC, "enUS")
+
+
+def test_parse_quest_link(ns):
+    assert ns.ParseQuestLink(FEL_ORC) == (10482, "Fel Orc Scavengers")
+
+
+def test_parse_bare_quest_string(ns):
+    # ItemRefTooltip:SetHyperlink gets the link without its |H…|h wrapping.
+    assert ns.ParseQuestLink("quest:10482:58") == (10482, None)
+
+
+def test_parse_quest_ignores_item_links(ns):
+    assert ns.ParseQuestLink(THUNDERFURY) is None
+
+
+def test_parse_quest_ignores_nil(ns):
+    assert ns.ParseQuestLink(None) is None
