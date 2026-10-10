@@ -1,6 +1,6 @@
 # Wowhead Gatherer: project notes
 
-By Krešimir Čoko. Hover any item or quest in World of Warcraft and press **Ctrl+C once**. A popup beside the cursor, over the game, shows what Wowhead knows: for an item, its sources (drops with chances, vendors, quests, crafting, containers, gathering); for a quest, its chain; for both, the best comments, with a button that opens the Wowhead page. It's mechanically inspired by Awakened PoE Trade, and has **nothing to do with trading or prices**.
+By Krešimir Čoko. Hover any item or quest in World of Warcraft and press **Ctrl+C once**. A popup beside the cursor, over the game, shows what Wowhead knows: for an item, its sources (drops with chances, vendors, quests, crafting, containers, gathering); for a quest, its chain; for both, the best comments, with quests in a chain or an item's Starts quest / Needed for lists clickable, and a breadcrumb back, with a button that opens the Wowhead page. It's mechanically inspired by Awakened PoE Trade, and has **nothing to do with trading or prices**.
 
 It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads in **WoW Forever** (`## Interface: 20506, 16001`; 16001 is a guess until Forever launches on 2026-11-04, so check `/dump select(4, GetBuildInfo())` there). It replaces the Wowhead Lookup add-on it started from. Designs: `docs/superpowers/specs/2026-10-09-wowhead-gatherer-design.md` and `docs/superpowers/specs/2026-10-10-quests-and-wow-look-design.md`; plans in `docs/superpowers/plans/`.
 
@@ -59,10 +59,11 @@ It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads
 | `main/wowheadPage.ts`, `main/zones.ts` | Read a page's inline data (`WH.Gatherer.addData`, `new Listview`, `lv_comments0`) and the zone names. |
 | `main/markup.ts`, `main/comments.ts`, `main/itemInfo.ts` | Comment markup → safe nodes; the best comments; source sections. |
 | `main/questPage.ts`, `main/questInfo.ts` | A quest page's heading and "Series" box; the quest's popup info. Every quest shows the icon `inv_misc_note_01`: the pages name `quest-start`, which Wowhead's image server doesn't have. |
+| `main/trail.ts`, `shared/pageName.ts` | The pages clicked through in the popup (`Trail`): it opens only quests the page on show lets the player click, builds their addresses itself, and goes back along the breadcrumb. `pageName` names a page. |
 | `static/popup.css`, `static/fonts/` | The game's panel look in CSS; Marcellus (SIL OFL) stands in for Friz Quadrata. |
 | `main/cache.ts`, `main/wowheadClient.ts` | Disk cache; fetch → browser fallback → tooltip-service header. |
 | `main/win32.ts`, `main/clipboardWatcher.ts` | koffi calls; the clipboard watcher. |
-| `main/placement.ts`, `main/popupWindow.ts`, `renderer/popup.ts`, `preload/preload.ts` | The overlay. |
+| `main/placement.ts`, `main/popupWindow.ts`, `renderer/popup.ts`, `preload/preload.ts` | The overlay. The page sends only numbers back (a quest ID, a breadcrumb index, its height); `popupWindow.ts` takes them only from its own page. Comments show 3, then 5 more per click. |
 | `main/browserFetch.ts`, `main/userAgent.ts`, `main/latestOnly.ts`, `main/trayIcon.ts`, `main/main.ts` | The Electron shell. |
 
 ## Conventions
