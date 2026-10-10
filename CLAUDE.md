@@ -1,20 +1,20 @@
 # Wowhead Gatherer: project notes
 
-By Krešimir Čoko. Hover any item in World of Warcraft and press **Ctrl+C once**. A popup beside the cursor, over the game, shows Wowhead's sources for the item (drops with chances, vendors, quests, crafting, containers, gathering) and its best comments, with a button that opens the Wowhead page. It's mechanically inspired by Awakened PoE Trade, and has **nothing to do with trading or prices**.
+By Krešimir Čoko. Hover any item or quest in World of Warcraft and press **Ctrl+C once**. A popup beside the cursor, over the game, shows what Wowhead knows: for an item, its sources (drops with chances, vendors, quests, crafting, containers, gathering); for a quest, its chain; for both, the best comments, with a button that opens the Wowhead page. It's mechanically inspired by Awakened PoE Trade, and has **nothing to do with trading or prices**.
 
-It targets **Burning Crusade Anniversary** (2.5.6, `## Interface: 20506`) on Windows 11, and replaces the Wowhead Lookup add-on it started from. The design and research are in `docs/superpowers/specs/2026-10-09-wowhead-gatherer-design.md`, and the build plan in `docs/superpowers/plans/2026-10-09-wowhead-gatherer.md`.
+It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads in **WoW Forever** (`## Interface: 20506, 16001`; 16001 is a guess until Forever launches on 2026-11-04, so check `/dump select(4, GetBuildInfo())` there). It replaces the Wowhead Lookup add-on it started from. Designs: `docs/superpowers/specs/2026-10-09-wowhead-gatherer-design.md` and `docs/superpowers/specs/2026-10-10-quests-and-wow-look-design.md`; plans in `docs/superpowers/plans/`.
 
 ## Two halves, one contract
 
-- **The add-on** (repo root). Holding Ctrl over an item readies the item's Wowhead link in a hidden, focused edit box, so C copies it with the game's own edit box. When that isn't possible (combat, action buttons, typing, option off), the lookup key opens Wowhead Lookup's link popup instead.
-- **The app** (`app\`, Electron + TypeScript). Watches the clipboard while `WowClassic.exe` is in front, reads the item's Wowhead page and shows the popup.
-- **The contract** is the link: `https://www.wowhead.com/[site/][lang/]item=<id>`, with the language **after** the site. Change it on both sides or neither.
+- **The add-on** (repo root). Holding Ctrl over an item or quest readies its Wowhead link in a hidden, focused edit box, so C copies it with the game's own edit box. When that isn't possible (combat, action buttons, typing, option off), the lookup key opens Wowhead Lookup's link popup instead.
+- **The app** (`app\`, Electron + TypeScript). Watches the clipboard while `WowClassic.exe` is in front, reads the item's or quest's Wowhead page and shows the popup.
+- **The contract** is the link: `https://www.wowhead.com/[site/][lang/]<item|quest>=<id>`, with the language **after** the site. Change it on both sides or neither.
 
 ## Hard limits
 
 - Add-ons **can't write the clipboard or open a browser** (`CopyToClipboard` and `LaunchURL` are `HasRestrictions = true`). Don't try to work around it in Lua.
 - The app **never sends input to the game, reads its memory or reads the screen**. The player's own keypress does the copying. Blizzard bans input broadcasting, so no synthetic keys.
-- **Wowhead's item pages sit behind AWS WAF.** Scripted requests get 403 after a handful. The app fetches through Electron's Chromium stack, falls back to a hidden browser window, and caches everything (items 24 h, zone names 7 days).
+- **Wowhead's item and quest pages sit behind AWS WAF.** Scripted requests get 403 after a handful. The app fetches through Electron's Chromium stack, falls back to a hidden browser window, and caches everything (items 24 h, zone names 7 days).
   - Never add background fetching or crawling.
   - Never fetch pages from a test; use the saved pages in `app/test/fixtures`.
 
@@ -41,12 +41,13 @@ It targets **Burning Crusade Anniversary** (2.5.6, `## Interface: 20506`) on Win
 
 | File | Role |
 |---|---|
-| `Core.lua` | Defaults, SavedVariables (`WowheadGathererDB`, `WowheadGathererCharDB`), event dispatch to `ns:EVENT()`, `ns:LookupHoveredItem`, `ns:TryOfferDefaultKey`, `/whg`. |
-| `Url.lua` | `ns.BuildItemURL(itemID, projectID, locale)`, `ns.ParseItemLink`. |
-| `Lookup.lua` | `ns.GetHoveredItem()`: on TBC, `GetItem()`; `TooltipUtil` exists only on mainline-family clients. |
+| `Core.lua` | Defaults, SavedVariables (`WowheadGathererDB`, `WowheadGathererCharDB`), event dispatch to `ns:EVENT()`, `ns:LookupHovered`, `ns:TryOfferDefaultKey`, `/whg`. |
+| `Url.lua` | `ns.BuildURL(kind, id, projectID, locale)` (`BuildItemURL` wraps it), `ns.ParseItemLink`, `ns.ParseQuestLink`. |
+| `Lookup.lua` | `ns.GetHoveredItem()` (on TBC, `GetItem()`; `TooltipUtil` exists only on mainline-family clients) and `ns.GetHovered()` → `kind, id, label`, items first. |
+| `Quests.lua` | `ns.GetHoveredQuest()`: quest log titles and Forever's tracker through `EventRegistry` hover announcements, TBC's tracker lines through a `QuestWatch_Update` post-hook, chat quest links through `ItemRefTooltip:SetHyperlink`. Every TBC-only global is behind an existence check. |
 | `Keybinding.lua` | `WOWHEADGATHERER_LOOKUP`, `WowheadGatherer_OnBinding`, `ns:OfferDefaultKey()` (Ctrl+C, once per binding set). |
-| `Popup.lua` | `ns.CreateCopyWatcher()`, `ns:ShowCopyPopup(url, itemID, link)`, `ns.MODIFIER_KEYS`. The fallback link popup. |
-| `ReadyCopy.lua` | The one-press copy: `ns:ReadyCopy()`, `ns:UnreadyCopy()`, `ns:CanReadyCopy()`, `MODIFIER_STATE_CHANGED`. |
+| `Popup.lua` | `ns.CreateCopyWatcher()`, `ns:ShowCopyPopup(url, kind, id, label)`, `ns.MODIFIER_KEYS`. The fallback link popup. |
+| `ReadyCopy.lua` | The one-press copy: `ns:ReadyCopy()`, `ns:UnreadyCopy()`, `ns:CanReadyCopy()`, `MODIFIER_STATE_CHANGED`. A readied quest lets go when the cursor leaves it (the box's `OnUpdate`). |
 | `Options.lua` | Enabled, the key-binding row, "Copy with one Ctrl+C", Wowhead language, Close after copying. |
 
 ## App files (`app\src`)
@@ -54,9 +55,11 @@ It targets **Burning Crusade Anniversary** (2.5.6, `## Interface: 20506`) on Win
 | File | Role |
 |---|---|
 | `shared/wowheadLink.ts` | `parseWowheadLink`: the contract. |
-| `shared/types.ts`, `shared/money.ts` | `ItemInfo`, `PopupState` and friends; `formatMoney`. |
+| `shared/types.ts`, `shared/money.ts` | `ItemInfo`, `QuestInfo`, `PageHeader`, `PopupState` and friends; `formatMoney`. |
 | `main/wowheadPage.ts`, `main/zones.ts` | Read a page's inline data (`WH.Gatherer.addData`, `new Listview`, `lv_comments0`) and the zone names. |
 | `main/markup.ts`, `main/comments.ts`, `main/itemInfo.ts` | Comment markup → safe nodes; the best comments; source sections. |
+| `main/questPage.ts`, `main/questInfo.ts` | A quest page's heading and "Series" box; the quest's popup info. Every quest shows the icon `inv_misc_note_01`: the pages name `quest-start`, which Wowhead's image server doesn't have. |
+| `static/popup.css`, `static/fonts/` | The game's panel look in CSS; Marcellus (SIL OFL) stands in for Friz Quadrata. |
 | `main/cache.ts`, `main/wowheadClient.ts` | Disk cache; fetch → browser fallback → tooltip-service header. |
 | `main/win32.ts`, `main/clipboardWatcher.ts` | koffi calls; the clipboard watcher. |
 | `main/placement.ts`, `main/popupWindow.ts`, `renderer/popup.ts`, `preload/preload.ts` | The overlay. |
@@ -71,4 +74,4 @@ It targets **Burning Crusade Anniversary** (2.5.6, `## Interface: 20506`) on Win
 
 ## Backlog
 
-Spells, NPCs and quests; the full tooltip; localised zone names; starting with Windows and an installer; the WoW Forever port (its program name, `/forever/` pages).
+Spells and NPCs; Questie's tracker; the full tooltip; localised zone names; starting with Windows and an installer; checking Forever at launch (its interface number, program name and `/forever/` pages).
