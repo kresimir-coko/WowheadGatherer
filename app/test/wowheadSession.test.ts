@@ -55,8 +55,11 @@ describe('configureWowheadSession', () => {
       return cancel;
     };
     expect(decide({ webContentsId: 3, resourceType: 'image' })).toBe(true);
-    expect(decide({ webContentsId: 3, resourceType: 'subFrame' })).toBe(true); // ad frames
+    expect(decide({ webContentsId: 3, resourceType: 'font' })).toBe(true);
     expect(decide({ webContentsId: 3, resourceType: 'script' })).toBe(false);
     expect(decide({ resourceType: 'image' })).toBe(false);
+    // Wowhead turns a page whose stylesheets or test frame fail to load into its error page.
+    expect(decide({ webContentsId: 3, resourceType: 'stylesheet' })).toBe(false);
+    expect(decide({ webContentsId: 3, resourceType: 'subFrame' })).toBe(false);
   });
 });

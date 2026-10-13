@@ -1,8 +1,11 @@
 import type { Session } from 'electron';
 import { browserUserAgent } from './userAgent';
 
-/** What the hidden window doesn't need to load: it only wants the page's scripts, not its pictures or ad frames. */
-const SKIPPED_RESOURCES = new Set(['image', 'media', 'font', 'stylesheet', 'subFrame']);
+/**
+ * What the hidden window doesn't need to load: pictures, sound and fonts. Stylesheets and frames
+ * must load: Wowhead sends a page whose stylesheets or test frame fail to its error page.
+ */
+const SKIPPED_RESOURCES = new Set(['image', 'media', 'font']);
 
 /**
  * Sets up the session Wowhead's requests and the hidden window share. The hidden

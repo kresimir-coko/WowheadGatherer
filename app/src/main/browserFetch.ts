@@ -1,6 +1,6 @@
 import { BrowserWindow, session, type Session } from 'electron';
 import type { FetchResult } from './wowheadClient';
-import { isCompletePage } from './wowheadPage';
+import { isCompletePage, isErrorPage } from './wowheadPage';
 import { configureWowheadSession } from './wowheadSession';
 
 /** Requests and the hidden window share this session, so a bot-check cookie the window earns helps later requests. */
@@ -65,7 +65,8 @@ export function loadInBrowser(url: string): Promise<{ html: string; url: string 
     };
     // The bot check can reload the page, so keep looking until the whole page is there.
     poll = setInterval(() => {
-      if (window.isDestroyed() || load !== newestLoad) {
+      // On Wowhead's error page the page never comes, so give up now rather than at the timeout.
+      if (window.isDestroyed() || load !== newestLoad || isErrorPage(window.webContents.getURL())) {
         finish(null);
         return;
       }

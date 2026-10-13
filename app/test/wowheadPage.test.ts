@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCompletePage, parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
+import { isCompletePage, isErrorPage, parseItemPage, sliceBracketed } from '../src/main/wowheadPage';
 import { parseZoneNames } from '../src/main/zones';
 import { fixture } from './fixtures';
 
@@ -75,6 +75,18 @@ describe('isCompletePage', () => {
 
   it("rejects Wowhead's bot check", () => {
     expect(isCompletePage('<script src="https://x.awswaf.com/challenge.js"></script>')).toBe(false);
+  });
+});
+
+describe('isErrorPage', () => {
+  it("knows Wowhead's error page, where a page whose files failed to load is sent", () => {
+    expect(isErrorPage('https://www.wowhead.com/error-static-cdn?hash=3baaafd2d9b&at=1791895908&redirect=%2Ftbc%2Fquest%3D10483')).toBe(true);
+  });
+
+  it('takes no ordinary page for it', () => {
+    expect(isErrorPage('https://www.wowhead.com/tbc/quest=10483/ill-omens')).toBe(false);
+    expect(isErrorPage('https://www.wowhead.com/tbc/item=19019/thunderfury#comments:error')).toBe(false);
+    expect(isErrorPage('')).toBe(false);
   });
 });
 

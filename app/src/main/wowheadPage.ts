@@ -144,6 +144,11 @@ export function isCompletePage(html: string): boolean {
   return html.includes('WH.Gatherer.addData(') && html.includes('new Listview(');
 }
 
+/** Whether the address is Wowhead's error page, where it sends a page whose own files failed to load. */
+export function isErrorPage(url: string): boolean {
+  return /^https:\/\/www\.wowhead\.com\/error-[\w-]+(?:[?#]|$)/.test(url);
+}
+
 /** Reads the data a Wowhead item page carries in its inline scripts. */
 export function parseItemPage(html: string): ItemPage {
   return { gatherer: readGatherer(html), listviews: readListviews(html), comments: readComments(html) };
