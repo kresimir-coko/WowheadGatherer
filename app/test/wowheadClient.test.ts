@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { DiskCache } from '../src/main/cache';
-import { MESSAGES, PAGE_MAX_AGE_MS, WowheadClient, withTimeout, type FetchResult } from '../src/main/wowheadClient';
+import { MESSAGES, PAGE_MAX_AGE_MS, WowheadClient, type FetchResult } from '../src/main/wowheadClient';
 import { parseWowheadLink, type WowheadLink } from '../src/shared/wowheadLink';
 import { fixture } from './fixtures';
 
@@ -32,7 +32,7 @@ const tooltip = () => ok(TOOLTIP_URL, fixture('tooltip-28773.json'));
 const felOrcPage = () => ok(`${FEL_ORC.url}/fel-orc-scavengers`, fixture('quest-10482.html.gz'));
 
 /** A client on a fake network: address → answer. Addresses it doesn't know fail like an offline network. */
-function setup(answers: Record<string, FetchResult>, browserHtml: string | null = null, now?: () => number) {
+function setup(answers: Record<string, FetchResult>, browserHtml: string | null = null, now?: () => number, browserUrl?: string) {
   const asked: string[] = [];
   const fetchText = vi.fn(async (url: string) => {
     asked.push(url);
@@ -40,7 +40,7 @@ function setup(answers: Record<string, FetchResult>, browserHtml: string | null 
     if (!answer) throw new Error(`offline: ${url}`);
     return answer;
   });
-  const loadInBrowser = vi.fn(async (_url: string) => browserHtml);
+  const loadInBrowser = vi.fn(async (url: string) => (browserHtml === null ? null : { html: browserHtml, url: browserUrl ?? url }));
   const cache = new DiskCache(mkdtempSync(path.join(tmpdir(), 'whg-client-')));
   return { client: new WowheadClient({ fetchText, loadInBrowser, cache, now }), asked, loadInBrowser, cache };
 }
@@ -212,29 +212,34 @@ describe('WowheadClient', () => {
     expect(asked).toContain(sameNumber.url);
   });
 
+  it('shares a lookup that is in flight, answering each with its own link', async () => {
+    const withChain = link(`${FEL_ORC.url}#chain=10160~Know%20your%20Enemy.10482~Fel%20Orc%20Scavengers`);
+    const { client, asked } = setup({ [FEL_ORC.url]: felOrcPage(), [ZONES_URL]: zones() });
+    const [plain, chained] = await Promise.all([client.lookup(FEL_ORC), client.lookup(withChain)]);
+    expect(asked.filter((url) => url === FEL_ORC.url)).toHaveLength(1);
+    expect(plain).toMatchObject({ kind: 'ready' });
+    expect(plain.link.chain).toBeUndefined();
+    expect(chained).toMatchObject({ kind: 'ready', link: { chain: withChain.chain } });
+  });
+
+  it("says the item is unknown when the hidden window lands on Wowhead's not-found page", async () => {
+    const { client } = setup({ [GOREHOWL.url]: blocked(GOREHOWL.url) }, fixture('item-999999.html.gz'), undefined,
+      'https://www.wowhead.com/tbc/items?notFound=28773');
+    expect(await client.lookup(GOREHOWL)).toMatchObject({ kind: 'error', message: MESSAGES.notFound('item', 28773) });
+  });
+
+  it('does not save a result without zone names', async () => {
+    const { client, asked } = setup({ [GOREHOWL.url]: gorehowlPage() });
+    await client.lookup(GOREHOWL);
+    await client.lookup(GOREHOWL);
+    expect(asked.filter((url) => url === GOREHOWL.url)).toHaveLength(2);
+  });
+
   it('asks the tooltip service in the link language', async () => {
     const { client } = setup({
       [GERMAN.url]: blocked(GERMAN.url),
       [GERMAN_TOOLTIP_URL]: ok(GERMAN_TOOLTIP_URL, '{"name":"Blutschrei","quality":4,"icon":"inv_axe_60"}'),
     });
     expect(await client.lookup(GERMAN)).toMatchObject({ header: { name: 'Blutschrei' } });
-  });
-});
-
-describe('withTimeout', () => {
-  it('passes the answer through', async () => {
-    expect(await withTimeout(Promise.resolve(5), 100)).toBe(5);
-  });
-
-  it('gives up after the time', async () => {
-    vi.useFakeTimers();
-    try {
-      const pending = withTimeout(new Promise(() => {}), 100);
-      const check = expect(pending).rejects.toThrow('Timed out after 100 ms');
-      vi.advanceTimersByTime(100);
-      await check;
-    } finally {
-      vi.useRealTimers();
-    }
   });
 });

@@ -9,7 +9,7 @@ import { Popup } from './popupWindow';
 import { guideUrl, Trail, type TrailStep } from './trail';
 import { TRAY_ICON_SIZE, trayIconPixels } from './trayIcon';
 import { clipboardSequence, foregroundExeName } from './win32';
-import { WowheadClient } from './wowheadClient';
+import { isCurrentCacheFile, WowheadClient, ZONES_MAX_AGE_MS } from './wowheadClient';
 
 // Held here so they aren't garbage-collected while the app runs.
 let tray: Tray | undefined;
@@ -18,11 +18,10 @@ let watcher: ClipboardWatcher | undefined;
 function start(): void {
   prepareWowheadSession();
   const trail = new Trail();
-  const client = new WowheadClient({
-    fetchText,
-    loadInBrowser,
-    cache: new DiskCache(path.join(app.getPath('userData'), 'cache')),
-  });
+  const cache = new DiskCache(path.join(app.getPath('userData'), 'cache'));
+  // Older versions' files and anything past the longest keep (zone names) are only clutter.
+  cache.prune(isCurrentCacheFile, ZONES_MAX_AGE_MS);
+  const client = new WowheadClient({ fetchText, loadInBrowser, cache });
   // Results carry the breadcrumb as it is when they arrive; latestOnly drops any the player has clicked past.
   const lookUp = latestOnly(
     (link: WowheadLink) => client.lookup(link),

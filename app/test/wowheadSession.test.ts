@@ -55,6 +55,7 @@ describe('configureWowheadSession', () => {
       return cancel;
     };
     expect(decide({ webContentsId: 3, resourceType: 'image' })).toBe(true);
+    expect(decide({ webContentsId: 3, resourceType: 'subFrame' })).toBe(true); // ad frames
     expect(decide({ webContentsId: 3, resourceType: 'script' })).toBe(false);
     expect(decide({ resourceType: 'image' })).toBe(false);
   });

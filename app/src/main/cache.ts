@@ -30,6 +30,27 @@ export class DiskCache {
     }
   }
 
+  /** Deletes the JSON files keep says no to (older versions), those older than maxAgeMs, and unreadable ones. */
+  prune(keep: (fileName: string) => boolean, maxAgeMs: number, now = Date.now()): void {
+    let names: string[];
+    try {
+      names = fs.readdirSync(this.dir);
+    } catch {
+      return;
+    }
+    for (const name of names) {
+      if (!name.endsWith('.json')) continue;
+      const file = path.join(this.dir, name);
+      try {
+        const entry = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<Entry<unknown>>;
+        const stale = typeof entry.savedAt !== 'number' || now - entry.savedAt > maxAgeMs;
+        if (!keep(name) || stale) fs.rmSync(file, { force: true });
+      } catch {
+        fs.rmSync(file, { force: true });
+      }
+    }
+  }
+
   private file(key: string): string {
     return path.join(this.dir, `${key.replace(/[^a-z0-9-]/gi, '_')}.json`);
   }

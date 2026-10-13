@@ -1,8 +1,8 @@
 import type { Session } from 'electron';
 import { browserUserAgent } from './userAgent';
 
-/** What the hidden window doesn't need to load: it only wants the page's scripts. */
-const SKIPPED_RESOURCES = new Set(['image', 'media', 'font', 'stylesheet']);
+/** What the hidden window doesn't need to load: it only wants the page's scripts, not its pictures or ad frames. */
+const SKIPPED_RESOURCES = new Set(['image', 'media', 'font', 'stylesheet', 'subFrame']);
 
 /**
  * Sets up the session Wowhead's requests and the hidden window share. The hidden

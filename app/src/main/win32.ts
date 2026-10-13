@@ -1,4 +1,5 @@
 import koffi from 'koffi';
+import { memoLast } from './memoLast';
 
 // Windows calls the app needs and Electron doesn't offer. Win32 BOOL is a
 // 4-byte int, so it's declared as int, not bool.
@@ -22,10 +23,18 @@ export function clipboardSequence(): number {
   return GetClipboardSequenceNumber() as number;
 }
 
+/** The program the foreground window last belonged to, so it's looked up only when the window changes. */
+const rememberExeName = memoLast<bigint, string>();
+
 /** The file name of the program in front, e.g. "WowClassic.exe", or "" when Windows won't say. */
 export function foregroundExeName(): string {
   const window = GetForegroundWindow();
   if (!window) return '';
+  return rememberExeName(BigInt(koffi.address(window)), () => exeNameOf(window));
+}
+
+/** The file name of the program that owns a window. */
+function exeNameOf(window: unknown): string {
   const processId = [0];
   GetWindowThreadProcessId(window, processId);
   if (!processId[0]) return '';

@@ -46,4 +46,22 @@ describe('DiskCache', () => {
     writeFileSync(file, '');
     expect(() => new DiskCache(file).set('a', 1, 0)).not.toThrow();
   });
+
+  it('prunes old versions and stale files, and leaves other files alone', () => {
+    const dir = tempDir();
+    const cache = new DiskCache(dir);
+    const day = 24 * 60 * 60 * 1000;
+    const now = 100 * day;
+    cache.set('item-v3-tbc-en-1', 1, now);
+    cache.set('item-v4-tbc-en-2', 2, now);
+    cache.set('item-v4-tbc-en-3', 3, now - 8 * day);
+    writeFileSync(path.join(dir, 'notes.txt'), 'keep');
+    writeFileSync(path.join(dir, 'broken-v4-x.json'), '{oops');
+    cache.prune((name) => name.includes('-v4-'), 7 * day, now);
+    expect(readdirSync(dir).sort()).toEqual(['item-v4-tbc-en-2.json', 'notes.txt']);
+  });
+
+  it('prunes nothing when there is no folder yet', () => {
+    expect(() => new DiskCache(path.join(tempDir(), 'missing')).prune(() => true, 1000)).not.toThrow();
+  });
 });

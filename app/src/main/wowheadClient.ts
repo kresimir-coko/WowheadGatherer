@@ -18,8 +18,11 @@ export interface FetchResult {
 export interface ClientDeps {
   /** A GET through the browser's network stack. Rejects when Wowhead can't be reached. */
   fetchText(url: string, headers: Record<string, string>): Promise<FetchResult>;
-  /** The page's HTML from a hidden browser window, which passes Wowhead's bot check like any browser; null when that fails too. */
-  loadInBrowser(url: string): Promise<string | null>;
+  /**
+   * The page's HTML and final address from a hidden browser window, which passes Wowhead's bot
+   * check like any browser; null when that fails too.
+   */
+  loadInBrowser(url: string): Promise<{ html: string; url: string } | null>;
   cache: DiskCache;
   now?: () => number;
 }
@@ -30,6 +33,11 @@ export const PAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const ZONES_MAX_AGE_MS = 7 * PAGE_MAX_AGE_MS;
 /** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`; 3: every comment, quest IDs; 4: quest guides. */
 const CACHE_VERSION = 4;
+
+/** Whether a cache file belongs to this version; older ones are deleted at start. */
+export function isCurrentCacheFile(fileName: string): boolean {
+  return fileName.includes(`-v${CACHE_VERSION}-`);
+}
 
 const PAGE_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -52,22 +60,34 @@ function netherUrl(link: WowheadLink, path: string, withLanguage: boolean): stri
 }
 
 export class WowheadClient {
+  /** Lookups waiting for Wowhead, by cache key: a second lookup of the same page shares the first. */
+  private readonly inFlight = new Map<string, Promise<PopupState>>();
+
   constructor(private readonly deps: ClientDeps) {}
 
   /** What the popup should show for a link. Never rejects. */
-  async lookup(link: WowheadLink): Promise<PopupState> {
+  lookup(link: WowheadLink): Promise<PopupState> {
     const key = `${link.kind}-v${CACHE_VERSION}-${link.site || 'retail'}-${link.lang || 'en'}-${link.id}`;
     const cached = this.deps.cache.get<LookupInfo>(key, PAGE_MAX_AGE_MS, this.now());
-    if (cached) return { kind: 'ready', link, info: cached };
+    if (cached) return Promise.resolve({ kind: 'ready', link, info: cached });
+    // The answer is the same page's; each caller gets it with its own link (and chain).
+    const pending = this.inFlight.get(key);
+    if (pending) return pending.then((state) => ({ ...state, link }));
+    const lookup = this.fetchAndRead(link, key).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, lookup);
+    return lookup;
+  }
 
+  private async fetchAndRead(link: WowheadLink, key: string): Promise<PopupState> {
     const page = await this.fetchPage(link);
     if (page.kind === 'not-found') {
       return { kind: 'error', link, message: MESSAGES.notFound(link.kind, link.id), header: null };
     }
     if (page.kind === 'html') {
-      const info = await this.read(link, page.html);
+      const { info, zonesKnown } = await this.read(link, page.html);
       if (info) {
-        this.deps.cache.set(key, info, this.now());
+        // Without zone names the rows lack their zones; try again next time rather than keep that for a day.
+        if (zonesKnown) this.deps.cache.set(key, info, this.now());
         return { kind: 'ready', link, info };
       }
     }
@@ -75,12 +95,13 @@ export class WowheadClient {
     return { kind: 'error', link, message, header: await this.header(link) };
   }
 
-  /** Reads a page with the reader for the link's kind; null when it doesn't hold what the link points at. */
-  private async read(link: WowheadLink, html: string): Promise<LookupInfo | null> {
+  /** Reads a page with the reader for the link's kind; info is null when it doesn't hold what the link points at. */
+  private async read(link: WowheadLink, html: string): Promise<{ info: LookupInfo | null; zonesKnown: boolean }> {
     const zones = await this.zoneNames(link);
-    if (link.kind === 'quest') return buildQuestInfo(link.id, parseQuestPage(html), zones);
-    if (link.kind === 'spell') return buildSpellInfo(link.id, html, zones);
-    return buildItemInfo(link.id, parseItemPage(html), zones);
+    const zonesKnown = zones.size > 0;
+    if (link.kind === 'quest') return { info: buildQuestInfo(link.id, parseQuestPage(html), zones), zonesKnown };
+    if (link.kind === 'spell') return { info: buildSpellInfo(link.id, html, zones), zonesKnown };
+    return { info: buildItemInfo(link.id, parseItemPage(html), zones), zonesKnown };
   }
 
   private async fetchPage(link: WowheadLink): Promise<PageResult> {
@@ -94,8 +115,10 @@ export class WowheadClient {
     if (response.status === 404 || response.url.includes('notFound=')) return { kind: 'not-found' };
     if (response.status === 200 && isCompletePage(response.text)) return { kind: 'html', html: response.text };
     // Anything else is most likely Wowhead's bot check, which a real browser window passes.
-    const html = await this.deps.loadInBrowser(link.url);
-    if (html !== null && isCompletePage(html)) return { kind: 'html', html };
+    const page = await this.deps.loadInBrowser(link.url);
+    // Wowhead sends an unknown ID to its search page, in the window as on the network.
+    if (page?.url.includes('notFound=')) return { kind: 'not-found' };
+    if (page && isCompletePage(page.html)) return { kind: 'html', html: page.html };
     return { kind: 'blocked' };
   }
 
@@ -137,21 +160,4 @@ export class WowheadClient {
   private now(): number {
     return this.deps.now?.() ?? Date.now();
   }
-}
-
-/** Rejects with an Error when the promise takes longer than ms milliseconds. */
-export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Timed out after ${ms} ms`)), ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }

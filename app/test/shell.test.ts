@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { latestOnly } from '../src/main/latestOnly';
+import { memoLast } from '../src/main/memoLast';
 import { TRAY_ICON_SIZE, trayIconPixels } from '../src/main/trayIcon';
 import { browserUserAgent } from '../src/main/userAgent';
 
@@ -72,5 +73,17 @@ describe('trayIconPixels', () => {
   it('is a disc: clear corners, solid middle', () => {
     expect(at(0, 0)[3]).toBe(0);
     expect(at(16, 16)).toEqual([0x1f, 0x1f, 0xb3, 0xff]);
+  });
+});
+
+describe('memoLast', () => {
+  it('computes once per key, and again when it changes', () => {
+    const remember = memoLast<string, number>();
+    let runs = 0;
+    const compute = () => ++runs;
+    expect(remember('a', compute)).toBe(1);
+    expect(remember('a', compute)).toBe(1);
+    expect(remember('b', compute)).toBe(2);
+    expect(remember('a', compute)).toBe(3);
   });
 });
