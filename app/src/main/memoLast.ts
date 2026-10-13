@@ -1,5 +1,5 @@
-/** Remembers the last answer: compute runs only when the key changes. */
-export function memoLast<K, V>(): (key: K, compute: () => V) => V {
+/** Remembers the last answer worth keeping: compute runs only when the key changes, or the answer wasn't kept. */
+export function memoLast<K, V>(keep: (value: V) => boolean = () => true): (key: K, compute: () => V) => V {
   let known = false;
   let lastKey: K | undefined;
   let lastValue: V | undefined;
@@ -7,7 +7,7 @@ export function memoLast<K, V>(): (key: K, compute: () => V) => V {
     if (!known || key !== lastKey) {
       lastValue = compute();
       lastKey = key;
-      known = true;
+      known = keep(lastValue);
     }
     return lastValue as V;
   };

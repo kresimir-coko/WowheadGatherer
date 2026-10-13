@@ -24,7 +24,8 @@ export function clipboardSequence(): number {
 }
 
 /** The program the foreground window last belonged to, so it's looked up only when the window changes. */
-const rememberExeName = memoLast<bigint, string>();
+// A failed look-up ("") isn't kept, or the game would stay "not in front" until another window was.
+const rememberExeName = memoLast<bigint, string>((name) => name !== '');
 
 /** The file name of the program in front, e.g. "WowClassic.exe", or "" when Windows won't say. */
 export function foregroundExeName(): string {

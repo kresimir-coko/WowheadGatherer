@@ -8,7 +8,7 @@ It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads
 
 - **The add-on** (repo root). Holding Ctrl over an item, quest or spell readies its Wowhead link in a hidden, focused edit box, so C copies it with the game's own edit box. When that isn't possible (combat, action buttons, typing, option off), the lookup key opens Wowhead Lookup's link popup instead.
 - **The app** (`app\`, Electron + TypeScript). Watches the clipboard while WoW (`WowClassic.exe` or `Wow.exe`) is in front, reads the item's, quest's or spell's Wowhead page and shows the popup.
-- **The contract** is the link: `https://www.wowhead.com/[site/][lang/]<item|quest|spell>=<id>[#chain=<id>~<name>.…]`, with the language **after** the site. A quest's link carries its whole chain from Questie after `#chain=` (names percent-encoded; browsers ignore it). Change it on both sides or neither.
+- **The contract** is the link: `https://www.wowhead.com/[site/][lang/]<item|quest|spell>=<id>[#chain=<id>~<name>.…]`, with the language **after** the site. A quest's link carries its whole chain from Questie after `#chain=` (names percent-encoded; browsers ignore it). The add-on keeps the chain under 16,000 characters, dropping the farthest quests, and the app reads links up to 50,000. Change it on both sides or neither.
 
 ## Hard limits
 

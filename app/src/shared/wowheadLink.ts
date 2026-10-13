@@ -24,8 +24,11 @@ export interface WowheadLink {
 /** The language paths Wowhead accepts after the game path (the add-on's Url.lua uses the same). */
 const LANGUAGES = new Set(['de', 'es', 'mx', 'fr', 'it', 'pt', 'ru', 'ko', 'cn', 'tw']);
 
-/** The longest clipboard text worth reading, in characters; a link with a long quest chain fits easily. */
-const MAX_LINK_LENGTH = 6000;
+/**
+ * The longest clipboard text worth reading, in characters. A whole chain in Russian or Chinese
+ * percent-encodes to about 20,000, and the add-on keeps the chain under 16,000 (Quests.lua).
+ */
+const MAX_LINK_LENGTH = 50_000;
 /** At most this many quests of a chain are read (25 before, the quest, 25 after), and names this long. */
 const MAX_CHAIN = 51;
 const MAX_CHAIN_NAME = 100;

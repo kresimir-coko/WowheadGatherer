@@ -1,4 +1,4 @@
-import { BrowserWindow, globalShortcut, ipcMain, screen, shell, type IpcMainEvent } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, screen, shell, type IpcMainEvent } from 'electron';
 import path from 'node:path';
 import type { PopupState } from '../shared/types';
 import { fitHeight, keepOnScreen, placePopup, POPUP_MIN_HEIGHT, POPUP_WIDTH, type Point } from './placement';
@@ -76,6 +76,16 @@ export class Popup {
     this.window.on('moved', () => {
       const [x, y] = this.window.getPosition();
       this.position = { x, y };
+    });
+    // Right-clicking the top bar would open Windows' window menu, whose Close destroys the window for good.
+    this.window.on('system-context-menu', (event) => event.preventDefault());
+    // Any close only hides the popup; the window lives until Quit.
+    let quitting = false;
+    app.on('before-quit', () => { quitting = true; });
+    this.window.on('close', (event) => {
+      if (quitting) return;
+      event.preventDefault();
+      this.hide();
     });
   }
 

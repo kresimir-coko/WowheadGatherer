@@ -158,18 +158,40 @@ local function Encode(text)
     end))
 end
 
+-- The longest chain a link carries, in characters. Names outside English encode
+-- to six or nine characters a letter, and the app reads links up to 50,000.
+local MAX_CHAIN_FRAGMENT = 16000
+
 -- "#chain=9824~Arcane%20Disturbances.9825~..." for a quest with a Questie chain,
--- or "". A browser ignores everything after "#"; the app reads it.
+-- or "". A browser ignores everything after "#"; the app reads it. Over budget,
+-- the quests farthest from this one are left out first.
 function ns.QuestChainFragment(questID)
     local chain = ns.QuestChain(questID)
     if not chain then
         return ""
     end
-    local entries = {}
+    local entries, length, current = {}, #"#chain=" - 1, 1
     for i, id in ipairs(chain) do
         entries[i] = id .. "~" .. Encode(QuestieField(id, "name") or ("Quest " .. id))
+        length = length + #entries[i] + 1
+        if id == questID then
+            current = i
+        end
     end
-    return "#chain=" .. table.concat(entries, ".")
+    local first, last = 1, #entries
+    while length > MAX_CHAIN_FRAGMENT and first < last do
+        if current - first >= last - current then
+            length = length - #entries[first] - 1
+            first = first + 1
+        else
+            length = length - #entries[last] - 1
+            last = last - 1
+        end
+    end
+    if first == last then
+        return ""
+    end
+    return "#chain=" .. table.concat(entries, ".", first, last)
 end
 
 -- The Wowhead address a lookup copies: for a quest, with its Questie chain after "#".

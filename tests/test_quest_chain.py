@@ -77,6 +77,25 @@ def test_fragment_encodes_the_names(addon):
     assert fragment == "#chain=9824~Arcane%20Disturbances.9825~Pl%C3%BCnderer%20der%20H%C3%B6llenorcs"
 
 
+def test_fragment_of_a_long_russian_chain_keeps_the_nearest_quests_in_budget(addon):
+    # 51 quests named with 60 Cyrillic letters (Ж is two bytes, six characters encoded):
+    # about 18,600 characters whole, over the 16,000 budget.
+    addon.run("""
+        questieQuests = {}
+        for id = 1, 61 do
+            questieQuests[id] = { name = string.rep("\\208\\150", 60), preQuestSingle = id > 1 and { id - 1 } or nil,
+                                  nextQuestInChain = id < 61 and id + 1 or nil }
+        end
+    """)
+    fragment = addon.run("return ns.QuestChainFragment(31)")
+    assert fragment.startswith("#chain=")
+    assert 16000 - 400 < len(fragment) <= 16000
+    ids = [int(entry.split("~")[0]) for entry in fragment[len("#chain="):].split(".")]
+    # The quests farthest from 31 were dropped, as evenly from both ends as possible.
+    assert ids == list(range(ids[0], ids[-1] + 1))
+    assert abs((31 - ids[0]) - (ids[-1] - 31)) <= 1
+
+
 def test_quest_links_carry_their_chain_and_items_do_not(addon):
     assert addon.run('return ns:LookupURL("quest", 9837)') == (
         "https://www.wowhead.com/tbc/quest=9837#chain=9824~Arcane%20Disturbances.9825~Restless%20Activity"

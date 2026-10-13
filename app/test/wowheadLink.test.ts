@@ -102,11 +102,20 @@ describe('chains from Questie', () => {
   });
 
   it('caps the chain at 51 quests and names at 100 characters', () => {
-    // One long name; the rest short, so the whole link stays under the 6,000-character limit.
+    // One long name; the rest short, so the whole link stays under the 50,000-character limit.
     const entries = Array.from({ length: 80 }, (_, i) => `${i + 1}~${i === 0 ? 'N'.repeat(150) : 'Q'}`).join('.');
     const link = parseWowheadLink(`${base}#chain=${entries}`);
     expect(link?.chain).toHaveLength(51);
     expect(link?.chain?.[0].name).toHaveLength(100);
+  });
+
+  it('reads a whole chain of Russian names, which percent-encode six characters a letter', () => {
+    // About 18,600 characters: 51 quests named with 60 Cyrillic letters each.
+    const name = 'Ж'.repeat(60);
+    const entries = Array.from({ length: 51 }, (_, i) => `${i + 1}~${encodeURIComponent(name)}`).join('.');
+    const link = parseWowheadLink(`https://www.wowhead.com/tbc/ru/quest=26#chain=${entries}`);
+    expect(link?.chain).toHaveLength(51);
+    expect(link?.chain?.[25]).toEqual({ id: 26, name });
   });
 
   it('has no chain for one quest, an item, or no fragment', () => {

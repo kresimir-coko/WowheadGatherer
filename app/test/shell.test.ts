@@ -86,4 +86,13 @@ describe('memoLast', () => {
     expect(remember('b', compute)).toBe(2);
     expect(remember('a', compute)).toBe(3);
   });
+
+  it('asks again after an answer it was told not to keep, such as a failed look-up', () => {
+    const remember = memoLast<string, string>((name) => name !== '');
+    const answers = ['', 'WowClassic.exe', 'other.exe'];
+    const compute = () => answers.shift() ?? '';
+    expect(remember('wow', compute)).toBe('');
+    expect(remember('wow', compute)).toBe('WowClassic.exe');
+    expect(remember('wow', compute)).toBe('WowClassic.exe');
+  });
 });
