@@ -38,7 +38,6 @@ describe('parseWowheadLink', () => {
 
   it.each([
     ['another site', 'https://www.example.com/tbc/item=19019'],
-    ['a spell', 'https://www.wowhead.com/tbc/spell=133'],
     ['text around the link', 'see https://www.wowhead.com/tbc/item=19019'],
     ['the language before the game', 'https://www.wowhead.com/de/tbc/item=19019'],
     ['an unknown language', 'https://www.wowhead.com/tbc/xx/item=19019'],
@@ -47,6 +46,7 @@ describe('parseWowheadLink', () => {
     ['nothing', ''],
     ['quest 0', 'https://www.wowhead.com/tbc/quest=0'],
     ['an NPC', 'https://www.wowhead.com/tbc/npc=16820'],
+    ['an achievement', 'https://www.wowhead.com/tbc/achievement=6'],
   ])('rejects %s', (_, text) => {
     expect(parseWowheadLink(text)).toBeNull();
   });
@@ -66,6 +66,17 @@ describe('parseWowheadLink', () => {
   it('drops the name Wowhead adds after a quest ID', () => {
     expect(parseWowheadLink('https://www.wowhead.com/tbc/quest=10482/fel-orc-scavengers')?.url)
       .toBe('https://www.wowhead.com/tbc/quest=10482');
+  });
+
+  it('reads a TBC spell link', () => {
+    expect(parseWowheadLink('https://www.wowhead.com/tbc/spell=27019')).toEqual({
+      url: 'https://www.wowhead.com/tbc/spell=27019', site: 'tbc', lang: '', kind: 'spell', id: 27019,
+    });
+  });
+
+  it('reads a WoW Forever spell link in German', () => {
+    expect(parseWowheadLink('https://www.wowhead.com/forever/de/spell=27019/arkaner-schuss')?.url)
+      .toBe('https://www.wowhead.com/forever/de/spell=27019');
   });
 
   it('rejects a huge clipboard quickly', () => {

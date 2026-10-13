@@ -23,7 +23,7 @@ export function clickableQuestIds(state: PopupState | null): Set<number> {
     for (const step of info.chain) {
       for (const quest of step.quests) if (!quest.current && quest.id > 0) ids.add(quest.id);
     }
-  } else {
+  } else if (info.kind === 'item') {
     for (const section of info.sections) {
       for (const row of section.rows) if (row.questId) ids.add(row.questId);
     }

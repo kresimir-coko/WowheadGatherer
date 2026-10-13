@@ -253,3 +253,21 @@ describe('more comments', () => {
     expect(root.querySelector('.more-comments')).toBeNull();
   });
 });
+
+describe('spells', () => {
+  const spellLink = parseWowheadLink('https://www.wowhead.com/tbc/spell=27019')!;
+  const spell = { kind: 'spell' as const, name: 'Arcane Shot', quality: 1, icon: 'ability_impalingbolt', comments: comments(4), commentTotal: 4 };
+
+  it('shows a spell: its name in white, and its comments', () => {
+    show({ kind: 'ready', link: spellLink, info: spell });
+    expect(text('h1')).toBe('Arcane Shot');
+    expect(root.querySelector('h1')?.className).toBe('q1');
+    expect(root.querySelectorAll('.comment')).toHaveLength(3);
+    expect(root.querySelector('.quest-link')).toBeNull();
+  });
+
+  it('says so when Wowhead has no comments for a spell', () => {
+    show({ kind: 'ready', link: spellLink, info: { ...spell, comments: [], commentTotal: 0 } });
+    expect(text('.status')).toBe('Wowhead lists no comments for this spell.');
+  });
+});

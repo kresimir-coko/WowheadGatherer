@@ -1,7 +1,7 @@
 /** What a Wowhead link points at. */
-export type LookupKind = 'item' | 'quest';
+export type LookupKind = 'item' | 'quest' | 'spell';
 
-/** A Wowhead address the add-on copied, e.g. https://www.wowhead.com/tbc/de/item=19019 or …/tbc/quest=10482. */
+/** A Wowhead address the add-on copied, e.g. https://www.wowhead.com/tbc/de/item=19019, …/tbc/quest=10482 or …/tbc/spell=27019. */
 export interface WowheadLink {
   /** The address, rebuilt with nothing after the ID. */
   url: string;
@@ -19,9 +19,9 @@ const LANGUAGES = new Set(['de', 'es', 'mx', 'fr', 'it', 'pt', 'ru', 'ko', 'cn',
 /** The longest clipboard text worth reading, in characters; a link is far shorter. */
 const MAX_LINK_LENGTH = 300;
 
-const LINK = /^https:\/\/www\.wowhead\.com\/(?:([a-z-]+)\/)?(?:([a-z]{2})\/)?(item|quest)=(\d+)(?:[/?#]\S*)?$/;
+const LINK = /^https:\/\/www\.wowhead\.com\/(?:([a-z-]+)\/)?(?:([a-z]{2})\/)?(item|quest|spell)=(\d+)(?:[/?#]\S*)?$/;
 
-/** Reads a Wowhead item or quest link, or returns null for anything else. */
+/** Reads a Wowhead item, quest or spell link, or returns null for anything else. */
 export function parseWowheadLink(text: string): WowheadLink | null {
   if (text.length > MAX_LINK_LENGTH) return null;
   const match = LINK.exec(text.trim());

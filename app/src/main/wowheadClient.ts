@@ -4,6 +4,7 @@ import type { DiskCache } from './cache';
 import { buildItemInfo } from './itemInfo';
 import { buildQuestInfo, QUEST_ICON } from './questInfo';
 import { parseQuestPage } from './questPage';
+import { buildSpellInfo } from './spellInfo';
 import { isCompletePage, parseItemPage } from './wowheadPage';
 import { parseZoneNames, type ZoneNames } from './zones';
 
@@ -77,9 +78,9 @@ export class WowheadClient {
   /** Reads a page with the reader for the link's kind; null when it doesn't hold what the link points at. */
   private async read(link: WowheadLink, html: string): Promise<LookupInfo | null> {
     const zones = await this.zoneNames(link);
-    return link.kind === 'quest'
-      ? buildQuestInfo(link.id, parseQuestPage(html), zones)
-      : buildItemInfo(link.id, parseItemPage(html), zones);
+    if (link.kind === 'quest') return buildQuestInfo(link.id, parseQuestPage(html), zones);
+    if (link.kind === 'spell') return buildSpellInfo(link.id, html, zones);
+    return buildItemInfo(link.id, parseItemPage(html), zones);
   }
 
   private async fetchPage(link: WowheadLink): Promise<PageResult> {
@@ -123,7 +124,8 @@ export class WowheadClient {
       return {
         kind: link.kind,
         name: data.name,
-        quality: typeof data.quality === 'number' ? data.quality : 1,
+        // Only items have a quality; the tooltip service gives spells -1, which would grey their name.
+        quality: link.kind === 'item' && typeof data.quality === 'number' ? data.quality : 1,
         // The tooltip service gives quests no icon.
         icon: typeof data.icon === 'string' ? data.icon : link.kind === 'quest' ? QUEST_ICON : '',
       };

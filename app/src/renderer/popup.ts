@@ -28,6 +28,12 @@ const MAX_QUALITY = 7;
 /** Comments a page opens with, and how many more each click on the button adds. */
 export const FIRST_COMMENTS = 3;
 export const MORE_COMMENTS = 5;
+/** What an empty page says, by kind. */
+const NOTHING_LISTED = {
+  item: 'Wowhead lists no sources or comments for this item.',
+  quest: 'Wowhead lists no chain or comments for this quest.',
+  spell: 'Wowhead lists no comments for this spell.',
+} as const;
 
 const CONTAINER_TAGS = {
   bold: 'strong', italic: 'em', underline: 'u', small: 'small', quote: 'blockquote', listItem: 'div',
@@ -179,14 +185,10 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
   }
   const { info } = state;
   if (info.kind === 'item') root.append(...info.sections.map((section) => renderSection(section, actions)));
-  else if (info.chain.length > 0) root.append(renderChain(info.chain, actions));
+  else if (info.kind === 'quest' && info.chain.length > 0) root.append(renderChain(info.chain, actions));
   if (info.comments.length > 0) root.append(renderComments(info, actions));
-  const listsNothing = info.kind === 'item' ? info.sections.length === 0 : info.chain.length === 0;
-  if (listsNothing && info.comments.length === 0) {
-    root.append(el('p', 'status', info.kind === 'item'
-      ? 'Wowhead lists no sources or comments for this item.'
-      : 'Wowhead lists no chain or comments for this quest.'));
-  }
+  const listsNothing = info.kind === 'item' ? info.sections.length === 0 : info.kind === 'quest' ? info.chain.length === 0 : true;
+  if (listsNothing && info.comments.length === 0) root.append(el('p', 'status', NOTHING_LISTED[info.kind]));
 }
 
 /**

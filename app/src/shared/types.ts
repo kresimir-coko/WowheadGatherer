@@ -73,7 +73,13 @@ export interface QuestInfo extends PageHeader {
   commentTotal: number;
 }
 
-export type LookupInfo = ItemInfo | QuestInfo;
+export interface SpellInfo extends PageHeader {
+  kind: 'spell';
+  comments: ItemComment[];
+  commentTotal: number;
+}
+
+export type LookupInfo = ItemInfo | QuestInfo | SpellInfo;
 
 /** What the popup shows: a lookup, and the pages clicked through to reach it. */
 export type PopupState = (

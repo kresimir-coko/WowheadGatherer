@@ -121,3 +121,16 @@ describe('Trail', () => {
     expect(trail.names()).toEqual([]);
   });
 });
+
+describe('spells', () => {
+  const ARCANE_SHOT = link('https://www.wowhead.com/tbc/spell=27019');
+
+  it('is nothing for a spell', () => {
+    const state: PopupState = { kind: 'ready', link: ARCANE_SHOT, info: { kind: 'spell', name: 'Arcane Shot', quality: 1, icon: '', comments: [], commentTotal: 0 } };
+    expect(clickableQuestIds(state).size).toBe(0);
+  });
+
+  it('names a spell "Spell N" until its name is known', () => {
+    expect(pageName({ kind: 'loading', link: ARCANE_SHOT })).toBe('Spell 27019');
+  });
+});

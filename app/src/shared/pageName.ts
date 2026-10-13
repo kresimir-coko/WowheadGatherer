@@ -7,7 +7,9 @@ export function headerOf(state: PopupState): PageHeader | null {
   return null;
 }
 
-/** What a page is called: the name Wowhead gave it, or "Quest 10482" / "Item 28105" until one is known. */
+const KIND_NAMES = { item: 'Item', quest: 'Quest', spell: 'Spell' } as const;
+
+/** What a page is called: the name Wowhead gave it, or "Quest 10482" / "Item 28105" / "Spell 27019" until one is known. */
 export function pageName(state: PopupState): string {
-  return headerOf(state)?.name ?? `${state.link.kind === 'quest' ? 'Quest' : 'Item'} ${state.link.id}`;
+  return headerOf(state)?.name ?? `${KIND_NAMES[state.link.kind]} ${state.link.id}`;
 }

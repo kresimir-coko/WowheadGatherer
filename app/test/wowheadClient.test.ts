@@ -18,6 +18,8 @@ const ORE = link('https://www.wowhead.com/tbc/item=23424');
 const GERMAN = link('https://www.wowhead.com/tbc/de/item=28773');
 const FEL_ORC = link('https://www.wowhead.com/tbc/quest=10482');
 const FEL_ORC_TOOLTIP_URL = 'https://nether.wowhead.com/tbc/tooltip/quest/10482';
+const ARCANE_SHOT = link('https://www.wowhead.com/tbc/spell=27019');
+const ARCANE_SHOT_TOOLTIP_URL = 'https://nether.wowhead.com/tbc/tooltip/spell/27019';
 const ZONES_URL = 'https://nether.wowhead.com/tbc/data/global';
 const TOOLTIP_URL = 'https://nether.wowhead.com/tbc/tooltip/item/28773';
 const GERMAN_TOOLTIP_URL = 'https://nether.wowhead.com/tbc/de/tooltip/item/28773';
@@ -151,6 +153,22 @@ describe('WowheadClient', () => {
     cache.set('item-v2-tbc-en-28773', { kind: 'item', name: 'Gorehowl', quality: 4, icon: 'inv_axe_60', sections: [], comments: [], commentTotal: 0 });
     await client.lookup(GOREHOWL);
     expect(asked).toContain(GOREHOWL.url);
+  });
+
+  it('reads a spell page', async () => {
+    const { client } = setup({ [ARCANE_SHOT.url]: ok(ARCANE_SHOT.url, fixture('spell-27019.html.gz')), [ZONES_URL]: zones() });
+    expect(await client.lookup(ARCANE_SHOT)).toMatchObject({ kind: 'ready', info: { kind: 'spell', name: 'Arcane Shot', commentTotal: 29 } });
+  });
+
+  it("shows the spell tooltip's name and icon when the page stays blocked", async () => {
+    const { client } = setup({
+      [ARCANE_SHOT.url]: blocked(ARCANE_SHOT.url),
+      [ARCANE_SHOT_TOOLTIP_URL]: ok(ARCANE_SHOT_TOOLTIP_URL, fixture('tooltip-spell-27019.json')),
+    });
+    expect(await client.lookup(ARCANE_SHOT)).toMatchObject({
+      kind: 'error', message: MESSAGES.blocked,
+      header: { kind: 'spell', name: 'Arcane Shot', quality: 1, icon: 'ability_impalingbolt' },
+    });
   });
 
   it('names the kind in the not-found message', () => {

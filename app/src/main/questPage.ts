@@ -42,9 +42,13 @@ function readChain(html: string): ChainStep[] {
   return steps;
 }
 
+/** A Wowhead page's heading: the name of what it's about, in the page's language, or null. */
+export function readHeading(html: string): string | null {
+  const heading = HEADING.exec(html);
+  return (heading && textOf(heading[1])) || null;
+}
+
 /** Reads a Wowhead quest page: its heading, its chain, and the data item pages also have. */
 export function parseQuestPage(html: string): QuestPage {
-  const heading = HEADING.exec(html);
-  const name = heading ? textOf(heading[1]) : '';
-  return { name: name || null, chain: readChain(html), data: parseItemPage(html) };
+  return { name: readHeading(html), chain: readChain(html), data: parseItemPage(html) };
 }
