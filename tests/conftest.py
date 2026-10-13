@@ -280,6 +280,23 @@ C_QuestLog = { GetQuestInfo = function(questID) return questTitles[questID] end 
 -- and its first text line.
 ItemRefTooltip = FakeTooltip({ shown = false })
 ItemRefTooltipTextLeft1 = FakeRegion()
+-- What clicking a chat link does (FrameXML/ItemRef.lua): shows it in ItemRefTooltip.
+function SetItemRef(link, text, button, chatFrame) ItemRefTooltip:SetHyperlink(link) end
+-- The chat windows. Add-ons hook their hyperlink scripts; EnterChatLink and
+-- LeaveChatLink run those hooks the way the client does.
+NUM_CHAT_WINDOWS = 10
+for i = 1, NUM_CHAT_WINDOWS do
+    local chatFrame = FakeHoverable({ hooks = {} })
+    function chatFrame:HookScript(script, func) self.hooks[script] = func end
+    _G["ChatFrame" .. i] = chatFrame
+end
+function EnterChatLink(chatFrame, link, text)
+    chatFrame.mouseOver = true
+    if chatFrame.hooks.OnHyperlinkEnter then chatFrame.hooks.OnHyperlinkEnter(chatFrame, link, text) end
+end
+function LeaveChatLink(chatFrame)
+    if chatFrame.hooks.OnHyperlinkLeave then chatFrame.hooks.OnHyperlinkLeave(chatFrame) end
+end
 """
 
 

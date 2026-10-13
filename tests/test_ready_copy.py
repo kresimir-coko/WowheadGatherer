@@ -246,6 +246,14 @@ def test_entering_a_quest_while_holding_ctrl(addon):
     assert ready_url(addon) == FEL_ORC_URL
 
 
+def test_entering_a_chat_quest_link_while_holding_ctrl(addon):
+    # Questie shows the quest in the game tooltip, which holds no item.
+    addon.g.GameTooltip = addon.tooltip()
+    hold_ctrl(addon)
+    addon.run('EnterChatLink(ChatFrame1, "questie:10482:Player-4904-0ABC1234", "[Fel Orc Scavengers]")')
+    assert ready_url(addon) == FEL_ORC_URL
+
+
 def test_leaving_the_quest_lets_go(addon):
     # A quest has no tooltip that closes when the cursor leaves it.
     button = hover_quest_title(addon)

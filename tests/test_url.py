@@ -90,6 +90,13 @@ def test_parse_bare_quest_string(ns):
     assert ns.ParseQuestLink("quest:10482:58") == (10482, None)
 
 
+def test_parse_questie_quest_link(ns):
+    # Questie turns chat quest links into its own, its name wrapped in colour codes.
+    link = "|Hquestie:10482:Player-4904-0ABC1234|h|cff40c040[|r|cffffff00[58] Fel Orc Scavengers|r|cff40c040]|r|h"
+    assert ns.ParseQuestLink(link) == (10482, None)
+    assert ns.ParseQuestLink("questie:10482:Player-4904-0ABC1234") == (10482, None)
+
+
 def test_parse_quest_ignores_item_links(ns):
     assert ns.ParseQuestLink(THUNDERFURY) is None
 

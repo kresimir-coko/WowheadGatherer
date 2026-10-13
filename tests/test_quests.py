@@ -257,3 +257,51 @@ def test_chat_link_name_from_the_tooltip(addon):
 def test_closing_the_chat_link_tooltip_forgets_it(chat_link):
     chat_link.run_hook(chat_link.g.ItemRefTooltip, "OnHide")
     assert hovered(chat_link) is None
+
+
+FEL_ORC_LINK = "|cffffff00|Hquest:10482:58|h[Fel Orc Scavengers]|h|r"
+QUESTIE_LINK = "questie:10482:Player-4904-0ABC1234"
+QUESTIE_TEXT = "|Hquestie:10482:Player-4904-0ABC1234|h|cff40c040[|r|cffffff00[58] Fel Orc Scavengers|r|cff40c040]|r|h"
+
+
+def test_hovered_chat_quest_link(addon):
+    log_in(addon)
+    addon.run(f'EnterChatLink(ChatFrame1, "quest:10482:58", "{FEL_ORC_LINK}")')
+    assert hovered(addon) == FEL_ORC
+
+
+def test_hovered_questie_chat_link_is_named_by_questie(addon):
+    addon.run('LibQuestieDB = { Quest = { Get = function(id, key) if id == 10482 and key == "name" then return "Fel Orc Scavengers" end end } }')
+    log_in(addon)
+    addon.run(f'EnterChatLink(ChatFrame3, "{QUESTIE_LINK}", "{QUESTIE_TEXT}")')
+    assert hovered(addon) == FEL_ORC
+
+
+def test_leaving_a_chat_link_forgets_it(addon):
+    log_in(addon)
+    addon.run(f'EnterChatLink(ChatFrame1, "quest:10482:58", "{FEL_ORC_LINK}"); LeaveChatLink(ChatFrame1)')
+    assert hovered(addon) is None
+
+
+def test_hovered_chat_link_counts_only_under_the_cursor(addon):
+    log_in(addon)
+    addon.run(f'EnterChatLink(ChatFrame1, "quest:10482:58", "{FEL_ORC_LINK}"); ChatFrame1.mouseOver = false')
+    assert hovered(addon) is None
+
+
+def test_hovered_chat_item_link_is_no_quest(addon):
+    log_in(addon)
+    addon.run(f'EnterChatLink(ChatFrame1, "quest:10482:58", "{FEL_ORC_LINK}")')
+    addon.run('EnterChatLink(ChatFrame1, "item:19019", "[Thunderfury]")')
+    assert hovered(addon) is None
+
+
+def test_clicked_questie_link_while_questie_shows_the_tooltip(addon):
+    # Questie replaces ItemRefTooltip.SetHyperlink after login and doesn't call
+    # what it replaced for quests it knows; the click is still seen.
+    addon.g.ItemRefTooltip = addon.tooltip(mouseOver=True)
+    addon.g.questTitles[10482] = "Fel Orc Scavengers"
+    log_in(addon)
+    addon.run('function ItemRefTooltip:SetHyperlink(link) self.questieShown = link end')
+    addon.run(f'SetItemRef("{QUESTIE_LINK}", "{QUESTIE_TEXT}", "LeftButton", ChatFrame1)')
+    assert hovered(addon) == FEL_ORC

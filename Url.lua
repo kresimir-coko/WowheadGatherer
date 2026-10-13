@@ -61,12 +61,15 @@ end
 
 -- Returns the quest ID and name in a quest link ("|Hquest:10482:58|h[Name]|h"),
 -- or just the ID from a bare "quest:10482:58" string, which is what
--- ItemRefTooltip:SetHyperlink gets. Nil when there's no quest ID.
+-- ItemRefTooltip:SetHyperlink gets. Questie's links ("questie:10482:<sender>")
+-- count too; their names are wrapped in colour codes, so they come back nameless.
+-- Nil when there's no quest ID.
 function ns.ParseQuestLink(link)
     if type(link) ~= "string" then
         return nil
     end
-    local questID = tonumber(link:match("^quest:(%d+)") or link:match("|Hquest:(%d+)"))
+    local questID = tonumber(link:match("^quest:(%d+)") or link:match("^questie:(%d+)")
+        or link:match("|Hquest:(%d+)") or link:match("|Hquestie:(%d+)"))
     if not questID then
         return nil
     end

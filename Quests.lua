@@ -21,6 +21,9 @@ local logButton, mapButton, trackerBlock
 local chatLinkQuest
 -- That quest's name from the tooltip's first line, for when the client doesn't know it yet.
 local chatLinkName
+-- The quest link under the cursor in a chat window (Questie shows a tooltip for
+-- it), its name from the link, and that window; nil once the cursor leaves.
+local chatHoverQuest, chatHoverName, chatHoverFrame
 -- TBC tracker line number -> { questID, title }, rebuilt after each tracker update.
 local watchLineQuests = {}
 
@@ -248,14 +251,24 @@ local function TrackerLineQuest()
     end
 end
 
+-- A chat link's quest name: the client's, then Questie's, then what the link
+-- or its tooltip said (Questie's links say it wrapped in colour codes).
+local function ChatLinkName(questID, said)
+    local questieName = QuestieField(questID, "name")
+    return ns.QuestTitle(questID) or (type(questieName) == "string" and questieName) or said
+end
+
 -- Returns the ID and, when known, the name of the quest under the cursor, or nil.
 function ns.GetHoveredQuest()
     -- Turning with the mouse freezes the cursor wherever the turn began.
     if IsMouselooking and IsMouselooking() then
         return nil
     end
+    if chatHoverQuest and IsHovered(chatHoverFrame) then
+        return chatHoverQuest, ChatLinkName(chatHoverQuest, chatHoverName)
+    end
     if chatLinkQuest and ItemRefTooltip:IsShown() and ItemRefTooltip:IsMouseOver() then
-        return chatLinkQuest, ns.QuestTitle(chatLinkQuest) or chatLinkName
+        return chatLinkQuest, ChatLinkName(chatLinkQuest, chatLinkName)
     end
     if IsHovered(logButton) then
         local questID, title = LogButtonQuest(logButton)
@@ -301,15 +314,46 @@ function ns:InitializeQuests()
         MapWatchLines()
     end
     if ItemRefTooltip and ItemRefTooltip.SetHyperlink then
-        hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(_, link)
+        local function ShowedChatLink(link)
             chatLinkQuest = ns.ParseQuestLink(link)
             -- The client may not have the quest's name yet; the tooltip's first line does.
             local line = _G.ItemRefTooltipTextLeft1
             chatLinkName = chatLinkQuest and line and line:GetText() or nil
+        end
+        hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(_, link)
+            ShowedChatLink(link)
         end)
+        -- Questie replaces SetHyperlink after login and, for quests it knows, never
+        -- calls what it replaced; the click itself (SetItemRef) still comes here.
+        -- Other links clicked (players, channels) don't touch the tooltip, so only
+        -- quest links count.
+        if SetItemRef then
+            hooksecurefunc("SetItemRef", function(link)
+                if ns.ParseQuestLink(link) then
+                    ShowedChatLink(link)
+                end
+            end)
+        end
         if ItemRefTooltip.HookScript then
             ItemRefTooltip:HookScript("OnHide", function()
                 chatLinkQuest, chatLinkName = nil, nil
+            end)
+        end
+    end
+    -- Quest links hovered in the chat windows.
+    for i = 1, NUM_CHAT_WINDOWS or 0 do
+        local chatFrame = _G["ChatFrame" .. i]
+        if chatFrame and chatFrame.HookScript then
+            chatFrame:HookScript("OnHyperlinkEnter", function(frame, link, text)
+                chatHoverQuest = ns.ParseQuestLink(link)
+                chatHoverName = chatHoverQuest and select(2, ns.ParseQuestLink(text)) or nil
+                chatHoverFrame = chatHoverQuest and frame or nil
+                if chatHoverQuest then
+                    Entered()
+                end
+            end)
+            chatFrame:HookScript("OnHyperlinkLeave", function()
+                chatHoverQuest, chatHoverName, chatHoverFrame = nil, nil, nil
             end)
         end
     end
