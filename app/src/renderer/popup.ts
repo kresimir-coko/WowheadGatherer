@@ -51,6 +51,21 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
+const SVG = 'http://www.w3.org/2000/svg';
+
+/** A pushpin, drawn here: its cap, its body widening to a collar, and its point. */
+function pushpin(): SVGSVGElement {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const d of ['M5 1.5h6v2H5z', 'M6.2 3.5h3.6v3.6L12 9.3H4l2.2-2.2z', 'M7.4 9.3h1.2L8 15.5z']) {
+    const path = document.createElementNS(SVG, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  return svg;
+}
+
 function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
   const header = el('header');
   const item = headerOf(state);
@@ -64,13 +79,17 @@ function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
   const quality = Math.min(Math.max(Math.trunc(item?.quality ?? 1), 0), MAX_QUALITY);
   // Quest names are gold, as in the game's quest log; items take their quality colour.
   header.append(el('h1', quest ? 'quest' : `q${quality}`, pageName(state)));
-  const open = el('button', 'open', 'Open on Wowhead');
+  const open = el('button', 'open', 'Wowhead');
+  open.title = 'Open this page on Wowhead';
   open.addEventListener('click', () => actions.openWowhead());
   const close = el('button', 'close', '×');
   close.title = 'Close (Esc)';
   close.addEventListener('click', () => actions.close());
-  const pin = el('button', state.pinned ? 'pin pinned' : 'pin', state.pinned ? 'Pinned' : 'Pin');
-  pin.title = state.pinned ? 'Unpin: Escape and switching away close it again' : 'Keep it open while you play';
+  const pin = el('button', state.pinned ? 'pin pinned' : 'pin');
+  pin.append(pushpin());
+  pin.setAttribute('aria-label', state.pinned ? 'Unpin' : 'Pin');
+  pin.setAttribute('aria-pressed', String(Boolean(state.pinned)));
+  pin.title = state.pinned ? 'Unpin: Escape and switching away close it again' : 'Pin: keep it open while you play';
   pin.addEventListener('click', () => actions.setPinned(!state.pinned));
   header.append(open, pin, close);
   return header;

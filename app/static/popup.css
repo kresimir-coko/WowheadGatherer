@@ -95,7 +95,11 @@ section.comments { padding: 0; background: none; border: none; }
   -webkit-app-region: drag;
 }
 .top button { -webkit-app-region: no-drag; }
+/* The pin leans while loose and stands upright, on gold, once pinned. */
+.pin { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.pin svg { width: 14px; height: 14px; fill: currentColor; transform: rotate(40deg); filter: drop-shadow(1px 1px 0 #000); }
 .pin.pinned { background: linear-gradient(to bottom, #6a5a1a, #3a3008); }
+.pin.pinned svg { transform: none; }
 
 /* The breadcrumb above the title: earlier pages are links back. */
 .trail { margin: 0 0 6px; font-size: 12px; color: var(--muted); }

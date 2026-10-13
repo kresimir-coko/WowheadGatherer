@@ -98,6 +98,7 @@ describe('renderState', () => {
 
   it('wires up the buttons', () => {
     show({ kind: 'ready', link, info });
+    expect(text('.open')).toBe('Wowhead');
     root.querySelector<HTMLButtonElement>('.open')?.click();
     root.querySelector<HTMLButtonElement>('.close')?.click();
     expect(actions.openWowhead).toHaveBeenCalledOnce();
@@ -312,15 +313,20 @@ describe('the window', () => {
     expect(root.querySelector('.top > header')).not.toBeNull();
   });
 
-  it('pins and unpins', () => {
+  it('pins and unpins with a pushpin icon, which says what it does', () => {
     show({ kind: 'ready', link, info });
-    expect(text('.pin')).toBe('Pin');
-    root.querySelector<HTMLButtonElement>('.pin')?.click();
+    const pin = () => root.querySelector<HTMLButtonElement>('.pin');
+    expect(pin()?.querySelector('svg')).not.toBeNull();
+    expect(text('.pin')).toBe('');
+    expect(pin()?.getAttribute('aria-label')).toBe('Pin');
+    expect(pin()?.getAttribute('aria-pressed')).toBe('false');
+    pin()?.click();
     expect(actions.setPinned).toHaveBeenLastCalledWith(true);
     show({ kind: 'ready', link, info, pinned: true });
-    expect(text('.pin')).toBe('Pinned');
-    expect(root.querySelector('.pin')?.classList.contains('pinned')).toBe(true);
-    root.querySelector<HTMLButtonElement>('.pin')?.click();
+    expect(pin()?.getAttribute('aria-label')).toBe('Unpin');
+    expect(pin()?.getAttribute('aria-pressed')).toBe('true');
+    expect(pin()?.classList.contains('pinned')).toBe(true);
+    pin()?.click();
     expect(actions.setPinned).toHaveBeenLastCalledWith(false);
   });
 
