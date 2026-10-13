@@ -22,7 +22,7 @@ let root: HTMLElement;
 let actions: PopupActions;
 beforeEach(() => {
   root = document.createElement('main');
-  actions = { close: vi.fn(), openWowhead: vi.fn(), openQuest: vi.fn(), goBack: vi.fn(), resized: vi.fn() };
+  actions = { close: vi.fn(), openWowhead: vi.fn(), openQuest: vi.fn(), goBack: vi.fn(), resized: vi.fn(), openGuide: vi.fn() };
 });
 const show = (state: PopupState) => renderState(root, state, actions);
 const text = (selector: string) => root.querySelector(selector)?.textContent;
@@ -127,7 +127,7 @@ describe('contentHeight', () => {
 
 const questLink = parseWowheadLink('https://www.wowhead.com/tbc/quest=10482')!;
 const quest: QuestInfo = {
-  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21,
+  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21, guides: [],
   chain: [
     { position: 1, quests: [{ id: 10160, name: 'Know your Enemy', current: false }] },
     { position: 2, quests: [{ id: 10482, name: 'Fel Orc Scavengers', current: true }] },
@@ -269,5 +269,38 @@ describe('spells', () => {
   it('says so when Wowhead has no comments for a spell', () => {
     show({ kind: 'ready', link: spellLink, info: { ...spell, comments: [], commentTotal: 0 } });
     expect(text('.status')).toBe('Wowhead lists no comments for this spell.');
+  });
+});
+
+describe('long chains and guides', () => {
+  const chainLink = parseWowheadLink('https://www.wowhead.com/tbc/quest=9836#chain=9824~Arcane%20Disturbances.9825~Restless%20Activity.9836~The%20Master%27s%20Touch.9837~Return%20to%20Khadgar')!;
+  const master: QuestInfo = { ...quest, name: "The Master's Touch", chain: [] };
+
+  it('shows the full chain from Questie, every other quest clickable', () => {
+    show({ kind: 'ready', link: chainLink, info: master });
+    expect(all('.chain .position')).toEqual(['1.', '2.', '3.', '4.']);
+    expect(all('.chain .current')).toEqual(["The Master's Touch"]);
+    const links = [...root.querySelectorAll<HTMLButtonElement>('.chain button.quest-link')];
+    expect(links.map((button) => button.textContent)).toEqual(['Arcane Disturbances', 'Restless Activity', 'Return to Khadgar']);
+    links[2].click();
+    expect(actions.openQuest).toHaveBeenCalledWith(9837);
+  });
+
+  it('lists the guides and opens them', () => {
+    const guides = [{ title: 'Attunements Guide', url: 'https://www.wowhead.com/tbc/guide/a' }, { title: 'Black Morass Guide', url: 'https://www.wowhead.com/tbc/guide/b' }];
+    show({ kind: 'ready', link: questLink, info: { ...quest, guides } });
+    expect(text('.guides h2')).toBe('Guides');
+    expect(all('.guides .guide-link')).toEqual(['Attunements Guide', 'Black Morass Guide']);
+    root.querySelectorAll<HTMLButtonElement>('.guides .guide-link')[1].click();
+    expect(actions.openGuide).toHaveBeenCalledWith(1);
+  });
+
+  it('never turns chain or guide names into HTML', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    const evilLink = parseWowheadLink(`https://www.wowhead.com/tbc/quest=9836#chain=1~${encodeURIComponent(evil)}.9836~Here`)!;
+    show({ kind: 'ready', link: evilLink, info: { ...master, guides: [{ title: evil, url: 'https://www.wowhead.com/tbc/guide/a' }] } });
+    expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
+    expect(text('.chain button.quest-link')).toBe(evil);
+    expect(text('.guides .guide-link')).toBe(evil);
   });
 });

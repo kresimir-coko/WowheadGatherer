@@ -1,6 +1,7 @@
 import type { GathererBridge } from '../preload/preload';
+import { chainFor } from '../shared/chain';
 import { headerOf, pageName } from '../shared/pageName';
-import type { ChainStep, ItemComment, LookupInfo, MarkupNode, PopupState, SourceSection } from '../shared/types';
+import type { ChainStep, Guide, ItemComment, LookupInfo, MarkupNode, PopupState, SourceSection } from '../shared/types';
 
 /** What the popup's buttons and links do. The preload bridge supplies them in the app. */
 export interface PopupActions {
@@ -12,6 +13,8 @@ export interface PopupActions {
   goBack(index: number): void;
   /** The content's height changed without a new state ("Show 5 more comments"). */
   resized(): void;
+  /** Opens one of the quest's Wowhead guides in the browser, by its place in the list. */
+  openGuide(index: number): void;
 }
 
 declare global {
@@ -122,6 +125,22 @@ function renderChain(chain: ChainStep[], actions: PopupActions): HTMLElement {
   return block;
 }
 
+/** Wowhead's guides for the quest, each opening in the browser. */
+function renderGuides(guides: Guide[], actions: PopupActions): HTMLElement {
+  const block = el('section', 'guides');
+  block.append(el('h2', undefined, 'Guides'));
+  const list = el('ul');
+  guides.forEach((guide, index) => {
+    const row = el('li');
+    const link = el('button', 'name guide-link', guide.title);
+    link.addEventListener('click', () => actions.openGuide(index));
+    row.append(link);
+    list.append(row);
+  });
+  block.append(list);
+  return block;
+}
+
 /** Comment nodes as DOM. Text only ever goes in as text. */
 export function renderMarkup(nodes: MarkupNode[]): Node[] {
   return nodes.map((node) => {
@@ -185,9 +204,12 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
   }
   const { info } = state;
   if (info.kind === 'item') root.append(...info.sections.map((section) => renderSection(section, actions)));
-  else if (info.kind === 'quest' && info.chain.length > 0) root.append(renderChain(info.chain, actions));
+  const chain = chainFor(state);
+  if (chain.length > 0) root.append(renderChain(chain, actions));
+  if (info.kind === 'quest' && info.guides.length > 0) root.append(renderGuides(info.guides, actions));
   if (info.comments.length > 0) root.append(renderComments(info, actions));
-  const listsNothing = info.kind === 'item' ? info.sections.length === 0 : info.kind === 'quest' ? info.chain.length === 0 : true;
+  const listsNothing = info.kind === 'item' ? info.sections.length === 0
+    : info.kind === 'quest' ? chain.length === 0 && info.guides.length === 0 : true;
   if (listsNothing && info.comments.length === 0) root.append(el('p', 'status', NOTHING_LISTED[info.kind]));
 }
 
@@ -208,6 +230,7 @@ if (bridge && root) {
     openWowhead: () => bridge.openWowhead(),
     openQuest: (id) => bridge.openQuest(id),
     goBack: (index) => bridge.goBack(index),
+    openGuide: (index) => bridge.openGuide(index),
     // Once laid out, ask the window to fit the content (main keeps it within limits).
     resized: () => requestAnimationFrame(() => bridge.reportHeight(contentHeight(root))),
   };

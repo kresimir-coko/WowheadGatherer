@@ -1,7 +1,8 @@
-import type { QuestInfo } from '../shared/types';
+import type { Guide, QuestInfo } from '../shared/types';
 import { pickComments } from './comments';
 import { pageNames } from './itemInfo';
 import type { QuestPage } from './questPage';
+import type { ItemPage } from './wowheadPage';
 import type { ZoneNames } from './zones';
 
 /** Wowhead's type number for quests in WH.Gatherer.addData. */
@@ -11,6 +12,19 @@ const QUEST_TYPE = 5;
  * "quest-start", but its image server has no such file.
  */
 export const QUEST_ICON = 'inv_misc_note_01';
+/** Guides shown per quest. */
+const MAX_GUIDES = 3;
+/** The only addresses a guide may have: Wowhead's own. */
+export const GUIDE_URL = /^https:\/\/www\.wowhead\.com\/[\w/.-]+$/;
+
+/** The guides the page links (its "guides" Listview), on wowhead.com, at most MAX_GUIDES. */
+function readGuides(page: ItemPage): Guide[] {
+  return (page.listviews.get('guides') ?? [])
+    .flatMap((row) => (typeof row.title === 'string' && typeof row.url === 'string' && GUIDE_URL.test(row.url)
+      ? [{ title: row.title.replace(/\s+/g, ' ').trim(), url: row.url }]
+      : []))
+    .slice(0, MAX_GUIDES);
+}
 
 /** Everything the popup shows for a quest, or null when the page doesn't have the quest's data. */
 export function buildQuestInfo(questId: number, page: QuestPage, zones: ZoneNames): QuestInfo | null {
@@ -28,6 +42,7 @@ export function buildQuestInfo(questId: number, page: QuestPage, zones: ZoneName
       ...step,
       quests: step.quests.map((chainQuest) => (chainQuest.current ? { ...chainQuest, id: questId } : chainQuest)),
     })),
+    guides: readGuides(page.data),
     comments,
     commentTotal: total,
   };

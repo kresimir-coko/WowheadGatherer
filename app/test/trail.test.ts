@@ -13,7 +13,7 @@ function link(url: string): WowheadLink {
 const FEL_ORC = link('https://www.wowhead.com/tbc/de/quest=10482');
 const DURONS_REPORT = link('https://www.wowhead.com/tbc/item=28105');
 const felOrc: QuestInfo = {
-  kind: 'quest', name: 'Plünderer der Höllenorcs', quality: 1, icon: 'inv_misc_note_01', comments: [], commentTotal: 0,
+  kind: 'quest', name: 'Plünderer der Höllenorcs', quality: 1, icon: 'inv_misc_note_01', comments: [], commentTotal: 0, guides: [],
   chain: [
     { position: 1, quests: [{ id: 10160, name: 'Den Feind kennen', current: false }] },
     { position: 2, quests: [{ id: 10482, name: 'Plünderer der Höllenorcs', current: true }] },

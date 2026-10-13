@@ -27,6 +27,26 @@ describe('buildQuestInfo', () => {
     expect(info(9977, 'quest-9977.html.gz')).toMatchObject({ chain: [], commentTotal: 101 });
   });
 
+  it("The Master's Touch: Wowhead's guides, kept on wowhead.com", () => {
+    const quest = info(9836, 'quest-9836.html.gz');
+    expect(quest?.guides).toEqual([
+      { title: 'Attunements Guide: Attunements Walkthrough, Quests and Locations - TBC Classic', url: 'https://www.wowhead.com/tbc/guide/attunement-dungeons-raids-burning-crusade-classic' },
+      { title: 'Black Morass Dungeon Quests Guide for Burning Crusade Classic', url: 'https://www.wowhead.com/tbc/guide/black-morass-dungeon-quest-guide-burning-crusade-classic-wow' },
+    ]);
+    expect(info(10482, 'quest-10482.html.gz')?.guides).toHaveLength(3);
+  });
+
+  it('skips guides that are not on wowhead.com, and keeps 3 at most', () => {
+    const rows = [
+      { title: 'Elsewhere', url: 'https://evil.example/guide' }, { title: 'A', url: 'https://www.wowhead.com/tbc/guide/a' },
+      { title: 'B', url: 'https://www.wowhead.com/tbc/guide/b' }, { title: 'C', url: 'https://www.wowhead.com/tbc/guide/c' },
+      { title: 'D', url: 'https://www.wowhead.com/tbc/guide/d' },
+    ];
+    const page = parseQuestPage(fixture('quest-10482.html.gz'));
+    page.data.listviews.set('guides', rows);
+    expect(buildQuestInfo(10482, page, zones)?.guides.map((guide) => guide.title)).toEqual(['A', 'B', 'C']);
+  });
+
   it('returns null when the page lacks the quest', () => {
     expect(info(1, 'quest-10482.html.gz')).toBeNull();
   });

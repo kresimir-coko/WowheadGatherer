@@ -86,3 +86,32 @@ describe('parseWowheadLink', () => {
     expect(performance.now() - started).toBeLessThan(50);
   });
 });
+
+describe('chains from Questie', () => {
+  const base = 'https://www.wowhead.com/tbc/quest=9836';
+
+  it('reads the chain after #chain=, and keeps the address plain', () => {
+    const link = parseWowheadLink(`${base}#chain=9824~Arcane%20Disturbances.9836~The%20Master%27s%20Touch`);
+    expect(link?.url).toBe(base);
+    expect(link?.chain).toEqual([{ id: 9824, name: 'Arcane Disturbances' }, { id: 9836, name: "The Master's Touch" }]);
+  });
+
+  it('skips broken chain entries', () => {
+    const link = parseWowheadLink(`${base}#chain=x~A.0~B.-3~C.12~%E0%A4%A.13~.14~Fine.15~Also%20fine`);
+    expect(link?.chain).toEqual([{ id: 14, name: 'Fine' }, { id: 15, name: 'Also fine' }]);
+  });
+
+  it('caps the chain at 51 quests and names at 100 characters', () => {
+    // One long name; the rest short, so the whole link stays under the 6,000-character limit.
+    const entries = Array.from({ length: 80 }, (_, i) => `${i + 1}~${i === 0 ? 'N'.repeat(150) : 'Q'}`).join('.');
+    const link = parseWowheadLink(`${base}#chain=${entries}`);
+    expect(link?.chain).toHaveLength(51);
+    expect(link?.chain?.[0].name).toHaveLength(100);
+  });
+
+  it('has no chain for one quest, an item, or no fragment', () => {
+    expect(parseWowheadLink(`${base}#chain=9836~Alone`)?.chain).toBeUndefined();
+    expect(parseWowheadLink('https://www.wowhead.com/tbc/item=19019#chain=1~A.2~B')?.chain).toBeUndefined();
+    expect(parseWowheadLink(base)).not.toHaveProperty('chain');
+  });
+});

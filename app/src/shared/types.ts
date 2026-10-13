@@ -65,10 +65,19 @@ export interface ChainStep {
   quests: ChainQuest[];
 }
 
+/** A Wowhead guide a quest page links to. */
+export interface Guide {
+  title: string;
+  /** Always on https://www.wowhead.com/. */
+  url: string;
+}
+
 export interface QuestInfo extends PageHeader {
   kind: 'quest';
   /** Wowhead's "Series" box in order, or [] when the quest isn't in a chain. */
   chain: ChainStep[];
+  /** Wowhead's guides for the quest, at most 3. */
+  guides: Guide[];
   comments: ItemComment[];
   commentTotal: number;
 }

@@ -93,12 +93,13 @@ section.comments { padding: 0; background: none; border: none; }
 
 /* Quest names and breadcrumb steps the player can click: text with a dotted
    underline, gold on hover. They undo the red button look. */
-button.quest-link, button.crumb {
+button.quest-link, button.guide-link, button.crumb {
   font: inherit; color: inherit; text-align: left; cursor: pointer;
   padding: 0; background: none; border: none; border-radius: 0; box-shadow: none;
   text-decoration: underline dotted rgba(255, 255, 255, 0.45); text-underline-offset: 3px;
 }
-button.quest-link:hover, button.quest-link:active, button.crumb:hover, button.crumb:active { color: var(--gold); background: none; }
+button.quest-link:hover, button.quest-link:active, button.guide-link:hover, button.guide-link:active,
+button.crumb:hover, button.crumb:active { color: var(--gold); background: none; }
 
 .more-comments { display: block; margin: 8px auto 0; }
 

@@ -20,6 +20,10 @@ const bridge = {
   goBack(index: number): void {
     ipcRenderer.send('popup:go-back', index);
   },
+  /** Opens one of the quest's Wowhead guides; the app checks the page on show lists it. */
+  openGuide(index: number): void {
+    ipcRenderer.send('popup:open-guide', index);
+  },
   reportHeight(height: number): void {
     ipcRenderer.send('popup:height', height);
   },
