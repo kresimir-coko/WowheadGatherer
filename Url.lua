@@ -25,7 +25,7 @@ local LANGUAGE_PATHS = {
     zhTW = "tw",
 }
 
--- Builds the Wowhead address of an item or a quest (kind "item" or "quest"),
+-- Builds the Wowhead address of an item, quest or spell (kind "item", "quest" or "spell"),
 -- e.g. https://www.wowhead.com/tbc/de/quest=10482. Wowhead redirects it to the
 -- page with the name in the address.
 function ns.BuildURL(kind, id, projectID, locale)

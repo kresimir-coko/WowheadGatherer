@@ -177,6 +177,7 @@ function CreateFrame(frameType, name)
     end)
     rawset(frame, "HasFocus", function(self) return keyboardFocus == self end)
     rawset(frame, "CreateFontString", function() return FakeRegion() end)
+    rawset(frame, "SetMaxLetters", function(self, n) rawset(self, "maxLetters", n) end)
     rawset(frame, "CreateTexture", function()
         local texture = FakeRegion()
         rawset(texture, "SetTexture", function(self, path) rawset(self, "texture", path) end)
@@ -275,8 +276,10 @@ end
 -- Quest names the client knows, by ID. TBC names them with C_QuestLog.GetQuestInfo.
 questTitles = {}
 C_QuestLog = { GetQuestInfo = function(questID) return questTitles[questID] end }
--- A closed chat-link tooltip, so code that hooks it at login always finds one.
+-- A closed chat-link tooltip, so code that hooks it at login always finds one,
+-- and its first text line.
 ItemRefTooltip = FakeTooltip({ shown = false })
+ItemRefTooltipTextLeft1 = FakeRegion()
 """
 
 

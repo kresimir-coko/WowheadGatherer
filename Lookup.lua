@@ -72,8 +72,8 @@ function ns.GetHoveredSpell()
     return ReadHoveredTooltip(ReadSpell)
 end
 
--- A spell's icon and name: C_Spell on mainline-family clients (Forever), the
--- old globals on TBC.
+-- A spell's icon and name: C_Spell, which Forever and TBC 2.5.6 both have; the
+-- old globals for clients without it.
 function ns.SpellIcon(spellID)
     if C_Spell and C_Spell.GetSpellTexture then
         return C_Spell.GetSpellTexture(spellID)

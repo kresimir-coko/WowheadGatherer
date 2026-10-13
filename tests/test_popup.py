@@ -229,3 +229,8 @@ def test_spell_name_and_icon_in_forever(addon, popup):
     addon.run(f'ns:ShowCopyPopup("{ARCANE_SHOT_URL}", "spell", 27019, nil)')
     assert popup.name.GetText(popup.name) == "Arcane Shot"
     assert popup.icon.texture == 999
+
+
+def test_link_box_takes_long_links(popup):
+    # A quest's link can carry its whole chain.
+    assert popup.box.maxLetters == 0

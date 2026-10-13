@@ -338,3 +338,16 @@ def test_not_over_pet_stance_or_possess_buttons(addon, button):
     addon.g.GameTooltip = addon.tooltip(legacySpell=addon.lua.table_from(["Kill Command", 34026]), owner=owner)
     hold_ctrl(addon)
     assert ready_url(addon) is None
+
+
+def test_scrolling_with_ctrl_held_readies_the_next_quest(addon):
+    hover_quest_title(addon)
+    hold_ctrl(addon)
+    addon.run('questLog[2] = { title = "Know your Enemy", questID = 10160, objectives = 1 }; questLogOffset = 1')
+    frame(addon)
+    assert ready_url(addon) == "https://www.wowhead.com/tbc/quest=10160"
+
+
+def test_ready_box_takes_long_links(addon):
+    hold_ctrl(addon)
+    assert ready_box(addon).maxLetters == 0

@@ -1,12 +1,12 @@
 local _, ns = ...
 
--- One-press copy. While Ctrl is held over an item or quest, a hidden edit box
+-- One-press copy. While Ctrl is held over an item, quest or spell, a hidden edit box
 -- holds its Wowhead link, selected and with keyboard focus, so the C of Ctrl+C
 -- copies it straight away. The game's edit box does the copying; the add-on
 -- never touches the clipboard (CopyToClipboard is Blizzard-only).
 --
 -- Key bindings don't fire while the box has focus, so a Ctrl+key binding
--- pressed over an item or quest would be used up. That's why the box is never readied
+-- pressed over an item, quest or spell would be used up. That's why the box is never readied
 -- in combat or over action buttons, and lets go of focus on any other key.
 
 -- Keys whose press readies the link and whose release lets it go. Ctrl copies
@@ -66,6 +66,8 @@ local function CreateReadyBox()
     editBox:SetAutoFocus(false)
     -- An edit box can't hold text without a font.
     editBox:SetFontObject(ChatFontNormal)
+    -- A quest's link carries its whole chain, so no length limit.
+    editBox:SetMaxLetters(0)
     editBox:SetScript("OnKeyDown", function(_, key)
         watcher.KeyDown(key, IsReadyKeyDown())
         if key ~= "C" and not ns.MODIFIER_KEYS[key] then
@@ -96,7 +98,17 @@ local function CreateReadyBox()
     -- A quest has no tooltip that closes when the cursor leaves it, so check
     -- each frame that it's still under the cursor.
     editBox:SetScript("OnUpdate", function()
-        if readyKind == "quest" and ns.GetHoveredQuest() ~= readyID then
+        if readyKind ~= "quest" then
+            return
+        end
+        local questID = ns.GetHoveredQuest()
+        if questID == readyID then
+            return
+        end
+        -- The wheel scrolled another quest under the cursor, or the cursor left.
+        if questID and IsReadyKeyDown() and not letGo then
+            ns:ReadyCopy()
+        else
             ns:UnreadyCopy()
         end
     end)
@@ -123,7 +135,7 @@ function ns:CanReadyCopy()
     return not (GameTooltip:IsShown() and IsActionButton(GameTooltip:GetOwner()))
 end
 
--- Readies the link of the item or quest under the cursor, or lets go when
+-- Readies the link of the item, quest or spell under the cursor, or lets go when
 -- there's nothing to ready.
 function ns:ReadyCopy()
     local kind, id
@@ -136,7 +148,7 @@ function ns:ReadyCopy()
     end
     box = box or CreateReadyBox()
     readyKind, readyID = kind, id
-    readyURL = ns.BuildURL(kind, id, WOW_PROJECT_ID, self:GetWowheadLocale())
+    readyURL = self:LookupURL(kind, id)
     box:SetText(readyURL)
     box:SetFocus()
     box:HighlightText()
@@ -154,7 +166,7 @@ function ns:GetReadyURL()
     return readyURL
 end
 
--- Moving onto another item or quest while still holding Ctrl readies that one.
+-- Moving onto another item, quest or spell while still holding Ctrl readies that one.
 local function ReadyIfHeld()
     if IsReadyKeyDown() and not letGo then
         ns:ReadyCopy()

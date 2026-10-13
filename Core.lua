@@ -10,7 +10,7 @@ ns.defaults = {
     -- Wowhead's language: "client" follows the game's, "english" is always English.
     language = "client",
     closeOnCopy = true,
-    -- Holding Ctrl over an item readies its link, so one Ctrl+C copies it.
+    -- Holding Ctrl over an item, quest or spell readies its link, so one Ctrl+C copies it.
     readyCopy = true,
     -- Whether the default key was offered with the account-wide bindings.
     defaultKeyOffered = false,
@@ -58,7 +58,7 @@ function ns:LookupHovered()
         ns.Flash("Hover over an item, quest or spell to look it up on Wowhead.", 1, 0.1, 0.1)
         return
     end
-    self:ShowCopyPopup(ns.BuildURL(kind, id, WOW_PROJECT_ID, self:GetWowheadLocale()), kind, id, label)
+    self:ShowCopyPopup(self:LookupURL(kind, id), kind, id, label)
 end
 
 --------------------------------------------------------------------------------

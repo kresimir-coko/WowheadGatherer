@@ -96,6 +96,8 @@ local function CreatePopup()
     box:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -(PADDING + ICON_SIZE + BOX_GAP))
     box:SetHeight(20)
     box:SetAutoFocus(false)
+    -- A quest's link carries its whole chain, so no length limit.
+    box:SetMaxLetters(0)
     frame.box = box
 
     local hint = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -123,7 +125,7 @@ local function CreatePopup()
     end)
     box:SetScript("OnKeyDown", function(_, key)
         -- Key bindings don't fire while the box has focus, so the lookup key
-        -- over another item or quest would only copy the old address. Look it up instead.
+        -- over another item, quest or spell would only copy the old address. Look it up instead.
         if GetBindingFromClick(key) == ns.BINDING then
             local kind, id = ns.GetHovered()
             if id and (kind ~= currentKind or id ~= currentID) then

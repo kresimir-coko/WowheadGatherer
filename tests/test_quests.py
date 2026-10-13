@@ -244,3 +244,16 @@ def test_spells_come_after_items_and_before_quests(tbc):
     assert tbc.run("return ns.GetHovered()") == ("spell", 27019, "Arcane Shot")
     tbc.g.GameTooltip = tbc.tooltip(legacyLink=THUNDERFURY, legacySpell=tbc.lua.table_from(["Arcane Shot", 27019]))
     assert tbc.run("return ns.GetHovered()") == ("item", 19019, THUNDERFURY)
+
+
+def test_chat_link_name_from_the_tooltip(addon):
+    # The client hasn't cached the quest; the tooltip's first line still names it.
+    addon.g.ItemRefTooltip = addon.tooltip(mouseOver=True)
+    log_in(addon)
+    addon.run('ItemRefTooltipTextLeft1:SetText("Fel Orc Scavengers"); ItemRefTooltip:SetHyperlink("quest:10482:58")')
+    assert hovered(addon) == FEL_ORC
+
+
+def test_closing_the_chat_link_tooltip_forgets_it(chat_link):
+    chat_link.run_hook(chat_link.g.ItemRefTooltip, "OnHide")
+    assert hovered(chat_link) is None
