@@ -92,7 +92,7 @@ export type LookupInfo = ItemInfo | QuestInfo | SpellInfo;
 
 /** What the popup shows: a lookup, and the pages clicked through to reach it. */
 export type PopupState = (
-  | { kind: 'loading'; link: WowheadLink }
+  | { kind: 'loading'; link: WowheadLink; /** The page's name when it's already known (a click inside the popup). */ name?: string }
   | { kind: 'ready'; link: WowheadLink; info: LookupInfo }
   | { kind: 'error'; link: WowheadLink; message: string; header: PageHeader | null }
 ) & {

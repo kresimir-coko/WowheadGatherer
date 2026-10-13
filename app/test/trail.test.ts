@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clickableQuestIds, questLink, Trail } from '../src/main/trail';
+import { clickableQuestIds, guideUrl, questLink, Trail } from '../src/main/trail';
 import { pageName } from '../src/shared/pageName';
 import type { ItemInfo, PopupState, QuestInfo } from '../src/shared/types';
 import { parseWowheadLink, type WowheadLink } from '../src/shared/wowheadLink';
@@ -73,7 +73,7 @@ describe('pageName', () => {
 describe('Trail', () => {
   it('opens a quest from the page on show, which joins the trail', () => {
     const trail = new Trail();
-    expect(trail.open(onReport, 10288)?.url).toBe('https://www.wowhead.com/tbc/quest=10288');
+    expect(trail.open(onReport, 10288)?.link.url).toBe('https://www.wowhead.com/tbc/quest=10288');
     expect(trail.names()).toEqual(["Duron's Report"]);
   });
 
@@ -103,7 +103,7 @@ describe('Trail', () => {
     };
     trail.open({ kind: 'ready', link: link('https://www.wowhead.com/tbc/quest=10288'), info: arrival }, 10140);
     expect(trail.names()).toEqual(["Duron's Report", 'Arrival in Outland']);
-    expect(trail.back(0)?.url).toBe(DURONS_REPORT.url);
+    expect(trail.back(0)?.link.url).toBe(DURONS_REPORT.url);
     expect(trail.names()).toEqual([]);
   });
 
@@ -132,5 +132,42 @@ describe('spells', () => {
 
   it('names a spell "Spell N" until its name is known', () => {
     expect(pageName({ kind: 'loading', link: ARCANE_SHOT })).toBe('Spell 27019');
+  });
+});
+
+describe('chains, names and guides', () => {
+  const CHAIN = '#chain=10160~Know%20your%20Enemy.10482~Fel%20Orc%20Scavengers.10483~Ill%20Omens';
+  const withChain = link(`https://www.wowhead.com/tbc/de/quest=10482${CHAIN}`);
+  const onChain: PopupState = { kind: 'ready', link: withChain, info: { ...felOrc, chain: [] } };
+
+  it('names the quest it opens, and the page it goes back to', () => {
+    const trail = new Trail();
+    expect(trail.open(onReport, 10288)?.name).toBe('Arrival in Outland');
+    expect(trail.back(0)?.name).toBe("Duron's Report");
+  });
+
+  it('carries the chain only to quests in it', () => {
+    const fromChain = new Trail().open(onChain, 10483);
+    expect(fromChain?.link.url).toBe('https://www.wowhead.com/tbc/de/quest=10483');
+    expect(fromChain?.link.chain).toEqual(withChain.chain);
+    expect(questLink(FEL_ORC, 10160)).not.toHaveProperty('chain');
+  });
+
+  it('lets the player click every other quest of a Questie chain', () => {
+    expect([...clickableQuestIds(onChain)]).toEqual([10160, 10483]);
+  });
+
+  it('opens only guides the page lists, on wowhead.com', () => {
+    const guides = [{ title: 'Attunements', url: 'https://www.wowhead.com/tbc/guide/a' }, { title: 'Bad', url: 'https://evil.example/x' }];
+    const state: PopupState = { kind: 'ready', link: FEL_ORC, info: { ...felOrc, guides } };
+    expect(guideUrl(state, 0)).toBe('https://www.wowhead.com/tbc/guide/a');
+    expect(guideUrl(state, 1)).toBeNull();
+    expect(guideUrl(state, 5)).toBeNull();
+    expect(guideUrl(state, '0')).toBeNull();
+    expect(guideUrl(null, 0)).toBeNull();
+  });
+
+  it('names a loading page by the name it was opened with', () => {
+    expect(pageName({ kind: 'loading', link: FEL_ORC, name: 'Know your Enemy' })).toBe('Know your Enemy');
   });
 });

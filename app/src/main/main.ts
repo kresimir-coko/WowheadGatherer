@@ -1,4 +1,4 @@
-import { app, clipboard, Menu, nativeImage, Tray } from 'electron';
+import { app, clipboard, Menu, nativeImage, shell, Tray } from 'electron';
 import path from 'node:path';
 import type { WowheadLink } from '../shared/wowheadLink';
 import { fetchText, loadInBrowser, prepareWowheadSession } from './browserFetch';
@@ -6,7 +6,7 @@ import { DiskCache } from './cache';
 import { ClipboardWatcher } from './clipboardWatcher';
 import { latestOnly } from './latestOnly';
 import { Popup } from './popupWindow';
-import { Trail } from './trail';
+import { guideUrl, Trail, type TrailStep } from './trail';
 import { TRAY_ICON_SIZE, trayIconPixels } from './trayIcon';
 import { clipboardSequence, foregroundExeName } from './win32';
 import { WowheadClient } from './wowheadClient';
@@ -29,14 +29,18 @@ function start(): void {
     (state) => popup.update({ ...state, trail: trail.names() }),
   );
   // A click inside the popup: show the page loading where the popup is, then look it up.
-  const goTo = (link: WowheadLink | null) => {
-    if (!link) return;
-    popup.replace({ kind: 'loading', link, trail: trail.names() });
-    lookUp(link);
+  const goTo = (step: TrailStep | null) => {
+    if (!step) return;
+    popup.replace({ kind: 'loading', link: step.link, name: step.name, trail: trail.names() });
+    lookUp(step.link);
   };
   const popup = new Popup({
     openQuest: (id) => goTo(trail.open(popup.current(), id)),
     goBack: (index) => goTo(trail.back(index)),
+    openGuide: (index) => {
+      const url = guideUrl(popup.current(), index);
+      if (url) void shell.openExternal(url);
+    },
     closed: () => trail.clear(),
   });
   const ownExe = path.basename(process.execPath).toLowerCase();

@@ -7,6 +7,8 @@ import { fitHeight, placePopup, POPUP_MIN_HEIGHT, POPUP_WIDTH, type Point } from
 export interface PopupHandlers {
   openQuest(id: unknown): void;
   goBack(index: unknown): void;
+  /** Opens one of the page's Wowhead guides, by its place in the list. */
+  openGuide(index: unknown): void;
   /** The popup was closed: by Escape, its ×, Open on Wowhead or switching away. */
   closed(): void;
 }
@@ -61,6 +63,7 @@ export class Popup {
     ipcMain.on('popup:height', (event, height: unknown) => fromPopup(event) && this.fitHeight(height));
     ipcMain.on('popup:open-quest', (event, id: unknown) => fromPopup(event) && this.handlers.openQuest(id));
     ipcMain.on('popup:go-back', (event, index: unknown) => fromPopup(event) && this.handlers.goBack(index));
+    ipcMain.on('popup:open-guide', (event, index: unknown) => fromPopup(event) && this.handlers.openGuide(index));
   }
 
   /** Shows a new lookup by the cursor. */
