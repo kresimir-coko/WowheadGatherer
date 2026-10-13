@@ -47,7 +47,7 @@ function ns:GetWowheadLocale()
     return GetLocale()
 end
 
--- Run by the lookup key: shows the Wowhead link of the item or quest under the cursor.
+-- Run by the lookup key: shows the Wowhead link of the item, quest or spell under the cursor.
 function ns:LookupHovered()
     if not self.db.enabled then
         ns.Flash("Wowhead Gatherer is turned off. Turn it on in /whg.", 1, 0.1, 0.1)
@@ -55,7 +55,7 @@ function ns:LookupHovered()
     end
     local kind, id, label = ns.GetHovered()
     if not id then
-        ns.Flash("Hover over an item or quest to look it up on Wowhead.", 1, 0.1, 0.1)
+        ns.Flash("Hover over an item, quest or spell to look it up on Wowhead.", 1, 0.1, 0.1)
         return
     end
     self:ShowCopyPopup(ns.BuildURL(kind, id, WOW_PROJECT_ID, self:GetWowheadLocale()), kind, id, label)
@@ -80,7 +80,7 @@ function ns:TryOfferDefaultKey()
     end
     local result, action = self:OfferDefaultKey()
     if result == "bound" then
-        self:Print("Hover over any item or quest and press " .. ns.GetLookupKeyText()
+        self:Print("Hover over any item, quest or spell and press " .. ns.GetLookupKeyText()
             .. " to get its Wowhead link. Options: /whg")
     elseif result == "taken" then
         self:Print(GetBindingText(ns.DEFAULT_KEY) .. " is already used for "

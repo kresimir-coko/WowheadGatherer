@@ -236,3 +236,11 @@ def test_not_while_turning_with_the_mouse(tbc):
     enter_log_title(tbc, 2)
     tbc.g.mouselooking = True
     assert hovered(tbc) is None
+
+
+def test_spells_come_after_items_and_before_quests(tbc):
+    enter_log_title(tbc, 2)
+    tbc.g.GameTooltip = tbc.tooltip(legacySpell=tbc.lua.table_from(["Arcane Shot", 27019]))
+    assert tbc.run("return ns.GetHovered()") == ("spell", 27019, "Arcane Shot")
+    tbc.g.GameTooltip = tbc.tooltip(legacyLink=THUNDERFURY, legacySpell=tbc.lua.table_from(["Arcane Shot", 27019]))
+    assert tbc.run("return ns.GetHovered()") == ("item", 19019, THUNDERFURY)

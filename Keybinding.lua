@@ -7,7 +7,7 @@ ns.DEFAULT_KEY = "CTRL-C"
 -- Names shown in Options > Keybindings. Bindings.xml files the action under
 -- the category named by BINDING_HEADER_WOWHEADGATHERER.
 BINDING_HEADER_WOWHEADGATHERER = "Wowhead Gatherer"
-BINDING_NAME_WOWHEADGATHERER_LOOKUP = "Look up hovered item or quest"
+BINDING_NAME_WOWHEADGATHERER_LOOKUP = "Look up hovered item, quest or spell"
 
 -- Run by the binding in Bindings.xml, which can only reach globals.
 function WowheadGatherer_OnBinding()

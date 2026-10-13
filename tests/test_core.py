@@ -81,7 +81,7 @@ def test_lookup_uses_the_forever_site_there(addon, popups):
 def test_nothing_hovered_says_so(addon, popups):
     addon.g.WowheadGatherer_OnBinding()
     assert popups() == []
-    assert addon.values("flashes") == ["Hover over an item or quest to look it up on Wowhead."]
+    assert addon.values("flashes") == ["Hover over an item, quest or spell to look it up on Wowhead."]
 
 
 def test_turned_off_says_so(addon, popups):
@@ -160,3 +160,9 @@ def test_toc_loads_in_tbc_and_forever():
     toc = (ADDON_DIR / "WowheadGatherer.toc").read_text(encoding="utf-8")
     # 16001 is a guess at WoW Forever's number (build 1.60.1); check it at launch.
     assert "## Interface: 20506, 16001" in toc.splitlines()
+
+
+def test_lookup_shows_a_spell_link(addon, popups):
+    addon.g.GameTooltip = addon.tooltip(legacySpell=addon.lua.table_from(["Arcane Shot", 27019]))
+    addon.g.WowheadGatherer_OnBinding()
+    assert popups() == ["https://www.wowhead.com/tbc/spell=27019"]

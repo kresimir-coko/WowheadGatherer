@@ -94,3 +94,40 @@ def test_tbc_hidden_tooltip_is_ignored(tbc):
 def test_tbc_tooltip_without_an_item_link(tbc):
     tbc.g.GameTooltip = tbc.tooltip(legacyLink="|cff71d5ff|Hspell:133|h[Fireball]|h|r")
     assert tbc.ns.GetHoveredItem() is None
+
+
+ARCANE_SHOT = (27019, "Arcane Shot")
+
+
+def test_reads_a_spell_from_tooltip_data(addon):
+    # Forever: the spell book's tooltip carries Spell data (Blizzard_SpellBookItem.lua).
+    addon.g.spellNames[27019] = "Arcane Shot"
+    addon.g.GameTooltip = addon.tooltip(dataType=SPELL, dataID=27019)
+    assert addon.ns.GetHoveredSpell() == ARCANE_SHOT
+
+
+def test_item_tooltip_is_not_a_spell(addon):
+    addon.g.GameTooltip = addon.tooltip(dataType=ITEM, dataID=19019, dataLink=THUNDERFURY)
+    assert addon.ns.GetHoveredSpell() is None
+
+
+def test_hidden_spell_tooltip_is_ignored(addon):
+    addon.g.GameTooltip = addon.tooltip(shown=False, dataType=SPELL, dataID=27019)
+    assert addon.ns.GetHoveredSpell() is None
+
+
+def test_tbc_reads_a_spell_with_get_spell(tbc):
+    tbc.g.GameTooltip = tbc.tooltip(legacySpell=tbc.lua.table_from(["Arcane Shot", 27019]))
+    assert tbc.ns.GetHoveredSpell() == ARCANE_SHOT
+
+
+def test_tbc_reads_an_old_style_spell(tbc):
+    # Older clients return name, rank, spellID.
+    tbc.g.GameTooltip = tbc.tooltip(legacySpell=tbc.lua.table_from(["Arcane Shot", "Rank 9", 27019]))
+    assert tbc.ns.GetHoveredSpell() == ARCANE_SHOT
+
+
+def test_tbc_hovered_chat_spell_link(tbc):
+    tbc.g.ItemRefTooltip = tbc.tooltip(mouseOver=True, legacySpell=tbc.lua.table_from(["Arcane Shot", 27019]))
+    tbc.g.GameTooltip = tbc.tooltip(shown=False)
+    assert tbc.ns.GetHoveredSpell() == ARCANE_SHOT

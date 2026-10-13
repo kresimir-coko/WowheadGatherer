@@ -142,7 +142,7 @@ local function ReadyIfHeld()
     end
 end
 
-local function OnItemTooltip(tooltip)
+local function OnTooltipFilled(tooltip)
     if tooltip == GameTooltip then
         ReadyIfHeld()
     end
@@ -153,14 +153,19 @@ function ns:OnQuestEntered()
     ReadyIfHeld()
 end
 
--- Hooks the item tooltip. Classic clients have TooltipDataProcessor, but their
--- own tooltips only run the old scripts, so it's used only where tooltips
--- carry data (the check Questie makes).
+-- Hooks the item and spell tooltips. Classic clients have TooltipDataProcessor,
+-- but their own tooltips only run the old scripts, so it's used only where
+-- tooltips carry data (the check Questie makes).
 function ns:InitializeReadyCopy()
     if GameTooltip.GetPrimaryTooltipData and TooltipDataProcessor then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnItemTooltip)
-    elseif GameTooltip:HasScript("OnTooltipSetItem") then
-        GameTooltip:HookScript("OnTooltipSetItem", OnItemTooltip)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnTooltipFilled)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, OnTooltipFilled)
+    else
+        for _, script in ipairs({ "OnTooltipSetItem", "OnTooltipSetSpell" }) do
+            if GameTooltip:HasScript(script) then
+                GameTooltip:HookScript(script, OnTooltipFilled)
+            end
+        end
     end
     GameTooltip:HookScript("OnHide", function()
         ns:UnreadyCopy()

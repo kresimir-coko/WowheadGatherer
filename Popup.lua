@@ -147,15 +147,18 @@ local function CreatePopup()
     return frame
 end
 
--- Shows the Wowhead address of an item or quest (kind "item" or "quest"),
--- selected and ready to copy. label is the item's link or the quest's name, when
--- known. Showing it again for something else swaps the contents.
+-- Shows the Wowhead address of an item, quest or spell (kind "item", "quest" or
+-- "spell"), selected and ready to copy. label is the item's link, or the quest's
+-- or spell's name, when known. Showing it again for something else swaps the contents.
 function ns:ShowCopyPopup(url, kind, id, label)
     popup = popup or CreatePopup()
     currentURL, currentKind, currentID = url, kind, id
     if kind == "quest" then
         popup.icon:SetTexture(QUEST_ICON)
         popup.name:SetText(label or ("Quest " .. id))
+    elseif kind == "spell" then
+        popup.icon:SetTexture(ns.SpellIcon(id))
+        popup.name:SetText(label or ns.SpellName(id) or ("Spell " .. id))
     else
         popup.icon:SetTexture(C_Item.GetItemIconByID(id))
         popup.name:SetText(label or C_Item.GetItemNameByID(id) or ("Item " .. id))

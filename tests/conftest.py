@@ -80,8 +80,20 @@ function GetBindingFromClick(key)
     return bindings[(ctrlDown and "CTRL-" or "") .. key] or ""
 end
 
+-- Spell names the client knows, by ID, and TBC's spell globals.
+spellNames = {}
+function GetSpellInfo(spellID) return spellNames[spellID] end
+function GetSpellTexture(spellID) return 136207 end
+
 -- Mirrors TooltipUtil.GetDisplayedItem in Blizzard_SharedXMLGame/Tooltip/TooltipUtil.lua.
 TooltipUtil = {
+    -- Mirrors TooltipUtil.GetDisplayedSpell (C_Spell.GetSpellName there; spellNames here).
+    GetDisplayedSpell = function(tooltip)
+        if tooltip:IsTooltipType(Enum.TooltipDataType.Spell) then
+            local id = tooltip:GetPrimaryTooltipData().id
+            return spellNames[id], id
+        end
+    end,
     GetDisplayedItem = function(tooltip)
         if tooltip:IsTooltipType(Enum.TooltipDataType.Item) then
             local data = tooltip:GetPrimaryTooltipData()
@@ -93,7 +105,8 @@ TooltipUtil = {
 }
 
 -- Fake tooltips. Options: shown (default true), mouseOver, dataType (0 item,
--- 1 spell; leave out for a tooltip without tooltip data), dataID, dataLink, legacyLink.
+-- 1 spell; leave out for a tooltip without tooltip data), dataID, dataLink, legacyLink,
+-- legacySpell (a list GetSpell() returns, e.g. { "Arcane Shot", 27019 }).
 function FakeTooltip(o)
     local tooltip = {}
     function tooltip:IsShown() return o.shown ~= false end
@@ -105,9 +118,14 @@ function FakeTooltip(o)
     if o.legacyLink then
         function tooltip:GetItem() return "Name", o.legacyLink end
     end
+    if o.legacySpell then
+        function tooltip:GetSpell() return unpack(o.legacySpell) end
+    end
     -- Scripts add-ons hook (run them with Addon.run_hook), and the owner frame.
     tooltip.hooks = {}
-    function tooltip:HasScript(script) return script == "OnTooltipSetItem" or script == "OnHide" end
+    function tooltip:HasScript(script)
+        return script == "OnTooltipSetItem" or script == "OnTooltipSetSpell" or script == "OnHide"
+    end
     function tooltip:HookScript(script, func) self.hooks[script] = func end
     function tooltip:GetOwner() return o.owner end
     function tooltip:SetHyperlink(link) self.hyperlink = link end

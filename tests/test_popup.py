@@ -59,6 +59,7 @@ def test_releasing_ctrl_first_still_copies(watcher):
 @pytest.fixture
 def popup(addon):
     addon.load("Keybinding.lua")
+    addon.load("Lookup.lua")
     addon.load("Popup.lua")
     addon.ns.db = addon.lua.table_from({"closeOnCopy": True})
     addon.run("function ns.Flash(text) table.insert(flashes, text) end")
@@ -199,3 +200,32 @@ def test_lookup_key_over_a_quest_with_the_items_number_looks_it_up(lookups, popu
     press(lookups, popup, "C", ctrl=True)
     release(lookups, popup, "C")
     assert lookups.g.lookups == 1
+
+
+ARCANE_SHOT_URL = "https://www.wowhead.com/tbc/spell=27019"
+
+
+def test_spell_shows_its_icon_and_name(addon, popup):
+    addon.run(f'ns:ShowCopyPopup("{ARCANE_SHOT_URL}", "spell", 27019, "Arcane Shot")')
+    assert popup.name.GetText(popup.name) == "Arcane Shot"
+    assert popup.icon.texture == 136207
+    assert popup.box.GetText(popup.box) == ARCANE_SHOT_URL
+
+
+def test_spell_name_from_the_client(addon, popup):
+    addon.g.spellNames[27019] = "Arcane Shot"
+    addon.run(f'ns:ShowCopyPopup("{ARCANE_SHOT_URL}", "spell", 27019, nil)')
+    assert popup.name.GetText(popup.name) == "Arcane Shot"
+    addon.run(f'ns:ShowCopyPopup("{ARCANE_SHOT_URL}", "spell", 1, nil)')
+    assert popup.name.GetText(popup.name) == "Spell 1"
+
+
+def test_spell_name_and_icon_in_forever(addon, popup):
+    # Forever has C_Spell and no GetSpellTexture/GetSpellInfo globals.
+    addon.run("""
+        GetSpellTexture, GetSpellInfo = nil, nil
+        C_Spell = { GetSpellTexture = function() return 999 end, GetSpellName = function() return "Arcane Shot" end }
+    """)
+    addon.run(f'ns:ShowCopyPopup("{ARCANE_SHOT_URL}", "spell", 27019, nil)')
+    assert popup.name.GetText(popup.name) == "Arcane Shot"
+    assert popup.icon.texture == 999

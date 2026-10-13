@@ -282,3 +282,31 @@ def test_ctrl_c_copies_a_quest(addon):
     key(addon, "OnKeyDown", "C")
     key(addon, "OnKeyUp", "C")
     assert addon.values("flashes") == ["Wowhead link copied."]
+
+
+ARCANE_SHOT_URL = "https://www.wowhead.com/tbc/spell=27019"
+
+
+def test_holding_ctrl_over_a_spell_readies_its_link(addon):
+    addon.g.GameTooltip = addon.tooltip(legacySpell=addon.lua.table_from(["Arcane Shot", 27019]))
+    hold_ctrl(addon)
+    assert ready_url(addon) == ARCANE_SHOT_URL
+
+
+def test_moving_onto_a_spell_while_holding_ctrl(addon):
+    tooltip = addon.g.GameTooltip
+    hold_ctrl(addon)
+    addon.run('function GameTooltip:GetItem() return nil end; function GameTooltip:GetSpell() return "Arcane Shot", 27019 end')
+    addon.run_hook(tooltip, "OnTooltipSetSpell")
+    assert ready_url(addon) == ARCANE_SHOT_URL
+
+
+def test_hooks_spell_tooltip_data_on_mainline_clients():
+    addon = Addon()
+    addon.run("postCalls = {}; TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) postCalls[kind] = fn end }")
+    addon.g.GameTooltip = addon.tooltip(dataType=ITEM, dataID=19019, dataLink=THUNDERFURY)
+    addon.load_all()
+    addon.fire("ADDON_LOADED", "WowheadGatherer")
+    addon.fire("PLAYER_LOGIN")
+    assert addon.run("return postCalls[Enum.TooltipDataType.Spell] ~= nil") is True
+    assert addon.run("return GameTooltip.hooks.OnTooltipSetSpell == nil") is True
