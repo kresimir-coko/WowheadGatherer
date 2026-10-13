@@ -29,8 +29,27 @@ local function IsReadyKeyDown()
 end
 
 -- Action buttons keep their slot in .action (Blizzard_ActionBar/Shared/ActionButton.lua).
+-- The pet, stance and possess bars set none, so they're known by their names;
+-- their keys are Ctrl+number and Ctrl+F-keys by default.
+local BAR_BUTTON_NAMES = { "^PetActionButton%d", "^StanceButton%d", "^ShapeshiftButton%d", "^PossessButton%d" }
+
 local function IsActionButton(frame)
-    return type(frame) == "table" and frame.action ~= nil
+    if type(frame) ~= "table" then
+        return false
+    end
+    if frame.action ~= nil then
+        return true
+    end
+    local name = frame.GetName and frame:GetName()
+    if type(name) ~= "string" then
+        return false
+    end
+    for _, pattern in ipairs(BAR_BUTTON_NAMES) do
+        if name:match(pattern) then
+            return true
+        end
+    end
+    return false
 end
 
 local function LetGo()
@@ -148,6 +167,15 @@ local function OnTooltipFilled(tooltip)
     end
 end
 
+-- Mainline-family clients (Forever) run tooltip post-calls before they show the
+-- tooltip, and the spell book doesn't refresh it afterwards, so the hovered
+-- thing is only readable a frame later.
+local function OnTooltipDataFilled(tooltip)
+    if tooltip == GameTooltip then
+        C_Timer.After(0, ReadyIfHeld)
+    end
+end
+
 -- Run by Quests.lua when a quest log title or tracker quest is entered.
 function ns:OnQuestEntered()
     ReadyIfHeld()
@@ -158,8 +186,8 @@ end
 -- tooltips carry data (the check Questie makes).
 function ns:InitializeReadyCopy()
     if GameTooltip.GetPrimaryTooltipData and TooltipDataProcessor then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnTooltipFilled)
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, OnTooltipFilled)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnTooltipDataFilled)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, OnTooltipDataFilled)
     else
         for _, script in ipairs({ "OnTooltipSetItem", "OnTooltipSetSpell" }) do
             if GameTooltip:HasScript(script) then

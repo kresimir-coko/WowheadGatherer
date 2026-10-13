@@ -45,6 +45,14 @@ function IsMacClient() return macClient end
 keyboardFocus = nil
 function GetCurrentKeyBoardFocus() return keyboardFocus end
 ChatFontNormal = Mock()
+-- C_Timer.After keeps its callbacks until a test runs them with RunTimers().
+timers = {}
+C_Timer = { After = function(_, callback) table.insert(timers, callback) end }
+function RunTimers()
+    local due = timers
+    timers = {}
+    for _, callback in ipairs(due) do callback() end
+end
 C_AddOns = {
     GetAddOnMetadata = function(_, field)
         return ({ Title = "Wowhead Gatherer", Version = "0.1.0" })[field]

@@ -310,3 +310,31 @@ def test_hooks_spell_tooltip_data_on_mainline_clients():
     addon.fire("PLAYER_LOGIN")
     assert addon.run("return postCalls[Enum.TooltipDataType.Spell] ~= nil") is True
     assert addon.run("return GameTooltip.hooks.OnTooltipSetSpell == nil") is True
+
+
+SPELL = 1
+
+
+def test_forever_readies_a_spell_once_its_tooltip_shows():
+    # Forever runs tooltip post-calls before it shows the tooltip
+    # (TooltipDataHandler.lua), and the spell book doesn't refresh it after.
+    addon = Addon()
+    addon.run("postCalls = {}; TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) postCalls[kind] = fn end }")
+    addon.g.GameTooltip = addon.tooltip(shown=False, dataType=SPELL, dataID=27019)
+    addon.load_all()
+    addon.fire("ADDON_LOADED", "WowheadGatherer")
+    addon.fire("PLAYER_LOGIN")
+    hold_ctrl(addon)
+    addon.run("postCalls[Enum.TooltipDataType.Spell](GameTooltip)")
+    addon.run("function GameTooltip:IsShown() return true end")
+    addon.run("RunTimers()")
+    assert ready_url(addon) == ARCANE_SHOT_URL
+
+
+@pytest.mark.parametrize("button", ["PetActionButton1", "StanceButton1", "ShapeshiftButton1", "PossessButton1"])
+def test_not_over_pet_stance_or_possess_buttons(addon, button):
+    # Their Ctrl+number and Ctrl+F-key bindings mustn't be swallowed; they have no .action.
+    owner = addon.run(f'return {{ GetName = function() return "{button}" end }}')
+    addon.g.GameTooltip = addon.tooltip(legacySpell=addon.lua.table_from(["Kill Command", 34026]), owner=owner)
+    hold_ctrl(addon)
+    assert ready_url(addon) is None
