@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { DiskCache } from '../src/main/cache';
-import { MESSAGES, PAGE_MAX_AGE_MS, WowheadClient, type FetchResult } from '../src/main/wowheadClient';
+import { isCurrentCacheFile, MESSAGES, PAGE_MAX_AGE_MS, WowheadClient, type FetchResult } from '../src/main/wowheadClient';
 import { parseWowheadLink, type WowheadLink } from '../src/shared/wowheadLink';
 import { fixture } from './fixtures';
 
@@ -241,5 +241,12 @@ describe('WowheadClient', () => {
       [GERMAN_TOOLTIP_URL]: ok(GERMAN_TOOLTIP_URL, '{"name":"Blutschrei","quality":4,"icon":"inv_axe_60"}'),
     });
     expect(await client.lookup(GERMAN)).toMatchObject({ header: { name: 'Blutschrei' } });
+  });
+});
+
+describe('the cache version', () => {
+  it('leaves quests saved before they had rewards, so they are looked up again', () => {
+    expect(isCurrentCacheFile('quest-v4-tbc-en-10482.json')).toBe(false);
+    expect(isCurrentCacheFile('quest-v5-tbc-en-10482.json')).toBe(true);
   });
 });

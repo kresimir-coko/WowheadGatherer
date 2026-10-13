@@ -31,8 +31,8 @@ export interface ClientDeps {
 export const PAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 /** How long the zone names stay fresh, in milliseconds. */
 export const ZONES_MAX_AGE_MS = 7 * PAGE_MAX_AGE_MS;
-/** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`; 3: every comment, quest IDs; 4: quest guides. */
-const CACHE_VERSION = 4;
+/** Bump when what's cached changes shape, so old cache files are left alone. 2: lookups gained `kind`; 3: every comment, quest IDs; 4: quest guides; 5: quest rewards. */
+const CACHE_VERSION = 5;
 
 /** Whether a cache file belongs to this version; older ones are deleted at start. */
 export function isCurrentCacheFile(fileName: string): boolean {

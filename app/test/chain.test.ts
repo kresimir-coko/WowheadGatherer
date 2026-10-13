@@ -4,7 +4,7 @@ import type { PopupState, QuestInfo } from '../src/shared/types';
 import { parseWowheadLink } from '../src/shared/wowheadLink';
 
 const quest: QuestInfo = {
-  kind: 'quest', name: "The Master's Touch", quality: 1, icon: '', comments: [], commentTotal: 0, guides: [],
+  kind: 'quest', name: "The Master's Touch", quality: 1, icon: '', comments: [], commentTotal: 0, guides: [], rewards: null,
   chain: [
     { position: 1, quests: [{ id: 9836, name: "The Master's Touch", current: true }] },
     { position: 2, quests: [{ id: 9837, name: 'Return to Khadgar', current: false }] },

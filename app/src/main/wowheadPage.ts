@@ -70,7 +70,12 @@ function parseJson(text: string | null): unknown {
   }
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+/** The JSON array or object starting at text[start], or undefined when it isn't whole JSON. */
+export function jsonAt(text: string, start: number): unknown {
+  return parseJson(sliceBracketed(text, start));
+}
+
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 

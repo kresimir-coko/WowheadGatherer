@@ -72,12 +72,39 @@ export interface Guide {
   url: string;
 }
 
+/** An item a quest gives. */
+export interface RewardItem {
+  id: number;
+  name: string;
+  /** 0 poor … 7 heirloom, as in the game. */
+  quality: number;
+  /** The icon's file name on Wowhead's image server, or "". */
+  icon: string;
+  count: number;
+}
+/** What finishing a quest gives, as its Wowhead page lists it. */
+export interface QuestRewards {
+  /** Items to choose one of. */
+  choice: RewardItem[];
+  /** Items everyone who finishes it gets. */
+  always: RewardItem[];
+  /** In copper; 0 for none. */
+  money: number;
+  /** Experience; 0 for none. */
+  xp: number;
+  /** The copper paid instead of experience at the level cap; 0 for none. */
+  moneyAtCap: number;
+  /** Reputation gained (or lost, below 0), by faction name in the page's language. */
+  reputation: { faction: string; amount: number }[];
+}
 export interface QuestInfo extends PageHeader {
   kind: 'quest';
   /** Wowhead's "Series" box in order, or [] when the quest isn't in a chain. */
   chain: ChainStep[];
   /** Wowhead's guides for the quest, at most 3. */
   guides: Guide[];
+  /** What it gives, or null when the page lists nothing. */
+  rewards: QuestRewards | null;
   comments: ItemComment[];
   commentTotal: number;
 }

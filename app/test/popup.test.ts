@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { contentHeight, refitWhenFontsLoad, renderState, type PopupActions } from '../src/renderer/popup';
-import type { ItemInfo, PopupState, QuestInfo } from '../src/shared/types';
+import type { ItemInfo, PopupState, QuestInfo, QuestRewards } from '../src/shared/types';
 import { parseWowheadLink } from '../src/shared/wowheadLink';
 
 const link = parseWowheadLink('https://www.wowhead.com/tbc/item=28773')!;
@@ -128,7 +128,7 @@ describe('contentHeight', () => {
 
 const questLink = parseWowheadLink('https://www.wowhead.com/tbc/quest=10482')!;
 const quest: QuestInfo = {
-  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21, guides: [],
+  kind: 'quest', name: 'Fel Orc Scavengers', quality: 1, icon: 'inv_misc_note_01', commentTotal: 21, guides: [], rewards: null,
   chain: [
     { position: 1, quests: [{ id: 10160, name: 'Know your Enemy', current: false }] },
     { position: 2, quests: [{ id: 10482, name: 'Fel Orc Scavengers', current: true }] },
@@ -137,6 +137,56 @@ const quest: QuestInfo = {
   comments: [{ user: 'Lustral', rating: 12, date: 'Jan 2008', body: [{ kind: 'text', text: 'North of Honor Hold.' }] }],
 };
 const all = (selector: string) => [...root.querySelectorAll(selector)].map((node) => node.textContent);
+
+const rewards: QuestRewards = {
+  choice: [
+    { id: 29915, name: 'Desolation Rod', quality: 2, icon: 'inv_wand_14', count: 1 },
+    { id: 29919, name: 'Adamantine Kite Shield', quality: 2, icon: 'inv_shield_29', count: 1 },
+  ],
+  always: [{ id: 24490, name: "The Master's Key", quality: 1, icon: 'inv_misc_key_07', count: 2 }],
+  money: 9000, xp: 9020, moneyAtCap: 5400,
+  reputation: [{ faction: 'Honor Hold', amount: 250 }, { faction: 'Thrallmar', amount: -25 }],
+};
+
+describe('quest rewards', () => {
+  it('come first under the title: items to choose from, items everyone gets, and the rest', () => {
+    show({ kind: 'ready', link: questLink, info: { ...quest, rewards } });
+    expect(root.querySelector('.top + section')?.className).toBe('rewards');
+    expect(text('.rewards h2')).toBe('Rewards');
+    expect(all('.rewards .label')).toEqual(['Choose one:', 'You also get:']);
+    expect(all('.rewards li .name')).toEqual(['Desolation Rod', 'Adamantine Kite Shield', "The Master's Key"]);
+    expect(root.querySelector('.rewards li .name')?.className).toBe('name q2');
+    expect(all('.rewards li .details')).toEqual(['×2']);
+    expect(root.querySelector('.rewards li img')?.getAttribute('src')).toBe('https://wow.zamimg.com/images/wow/icons/large/inv_wand_14.jpg');
+    expect(text('.rewards .gains')).toBe('9,020 XP (54s at max level) · 90s · +250 Honor Hold · -25 Thrallmar');
+  });
+
+  it('says "You get" when there is nothing to choose', () => {
+    show({ kind: 'ready', link: questLink, info: { ...quest, rewards: { ...rewards, choice: [] } } });
+    expect(all('.rewards .label')).toEqual(['You get:']);
+  });
+
+  it('leaves out what the quest does not give', () => {
+    const plain = { choice: [], always: [], money: 0, xp: 25300, moneyAtCap: 151800, reputation: [] };
+    show({ kind: 'ready', link: questLink, info: { ...quest, rewards: plain } });
+    expect(root.querySelectorAll('.rewards ul, .rewards .label')).toHaveLength(0);
+    expect(text('.rewards .gains')).toBe('25,300 XP (15g 18s at max level)');
+  });
+
+  it('never turns a reward name into HTML, and loads only icons by their file name', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    const item = { id: 1, name: evil, quality: 9, icon: 'x.jpg?"onerror', count: 1 };
+    show({ kind: 'ready', link: questLink, info: { ...quest, rewards: { ...rewards, choice: [item], always: [] } } });
+    expect(text('.rewards li .name')).toBe(evil);
+    expect(root.querySelector('.rewards li .name')?.className).toBe('name q7');
+    expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
+  });
+
+  it('counts as something listed', () => {
+    show({ kind: 'ready', link: questLink, info: { ...quest, chain: [], comments: [], commentTotal: 0, rewards } });
+    expect(root.querySelector('.status')).toBeNull();
+  });
+});
 
 describe('renderState for quests', () => {
   it('shows the quest name in gold, with the quest icon', () => {

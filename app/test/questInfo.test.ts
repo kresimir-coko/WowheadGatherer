@@ -51,3 +51,44 @@ describe('buildQuestInfo', () => {
     expect(info(1, 'quest-10482.html.gz')).toBeNull();
   });
 });
+
+describe('quest rewards', () => {
+  it('Fel Orc Scavengers: five items to choose from, money, experience and reputation', () => {
+    const rewards = info(10482, 'quest-10482.html.gz')?.rewards;
+    expect(rewards?.choice).toHaveLength(5);
+    expect(rewards?.choice[0]).toEqual({ id: 29915, name: 'Desolation Rod', quality: 2, icon: 'inv_wand_14', count: 1 });
+    expect(rewards).toMatchObject({ always: [], money: 9000, xp: 9020, moneyAtCap: 5400, reputation: [{ faction: 'Honor Hold', amount: 250 }] });
+  });
+
+  it('Return to Khadgar: an item everyone gets', () => {
+    expect(info(9837, 'quest-9837.html.gz')?.rewards).toEqual({
+      choice: [],
+      always: [{ id: 24490, name: "The Master's Key", quality: 1, icon: 'inv_misc_key_07', count: 1 }],
+      money: 0, xp: 19000, moneyAtCap: 114000,
+      reputation: [{ faction: 'The Violet Eye', amount: 500 }],
+    });
+  });
+
+  it("The Master's Touch: no items, the gold paid at the level cap", () => {
+    expect(info(9836, 'quest-9836.html.gz')?.rewards).toMatchObject({ choice: [], always: [], money: 0, xp: 25300, moneyAtCap: 151800 });
+  });
+
+  it('names items and factions in the page language', () => {
+    const rewards = info(10482, 'quest-de-10482.html.gz')?.rewards;
+    expect(rewards?.choice[0].name).toBe('Rute der Verwüstung');
+    expect(rewards?.reputation).toEqual([{ faction: 'Ehrenfeste', amount: 250 }]);
+  });
+
+  it('keeps an item the page has no data for, by its ID', () => {
+    const page = parseQuestPage(fixture('quest-10482.html.gz'));
+    page.data.gatherer.get(3)?.delete(29915);
+    expect(buildQuestInfo(10482, page, zones)?.rewards?.choice[0]).toEqual({ id: 29915, name: 'Item 29915', quality: 1, icon: '', count: 1 });
+  });
+
+  it('has no rewards when the page lists none', () => {
+    const page = parseQuestPage(fixture('quest-10482.html.gz'));
+    page.details.clear();
+    page.moneyAtCap = 0;
+    expect(buildQuestInfo(10482, page, zones)?.rewards).toBeNull();
+  });
+});

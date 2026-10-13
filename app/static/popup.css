@@ -76,6 +76,14 @@ li + li { border-top: 1px solid rgba(92, 74, 53, 0.35); }
 .chain .position { min-width: 1.6em; color: var(--muted); text-align: right; }
 .chain .current { color: var(--gold); }
 
+/* Rewards: each item's icon, its name in its quality colour, and how many. */
+.rewards li { justify-content: flex-start; align-items: center; gap: 6px; }
+.rewards li + li { border-top: none; }
+.reward-icon { width: 20px; height: 20px; border: 1px solid var(--inset-rim); border-radius: 3px; box-shadow: 0 0 0 1px #000; }
+.rewards .details { margin-left: auto; }
+.rewards .label { margin: 2px 0 2px; color: var(--muted); font-size: 12px; }
+.rewards .gains { margin: 4px 0 0; color: var(--muted); }
+
 .status { margin: 8px 0 0; color: var(--muted); }
 .status.error { color: var(--error); }
 

@@ -47,6 +47,17 @@ describe('parseQuestPage', () => {
     ]);
   });
 
+  it('keeps two versions of a quest that share a line apart (Return to Khadgar, step 1)', () => {
+    // Wowhead lists them in one box, split by <br />.
+    expect(parseQuestPage(fixture('quest-9837.html.gz')).chain[0]).toEqual({
+      position: 1,
+      quests: [
+        { id: 9836, name: "The Master's Touch", current: false },
+        { id: 10737, name: "The Master's Touch", current: false },
+      ],
+    });
+  });
+
   it('copes with a page that is not a quest page', () => {
     expect(parseQuestPage('<p>Nothing here</p>')).toMatchObject({ name: null, chain: [] });
   });

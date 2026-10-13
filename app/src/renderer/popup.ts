@@ -1,7 +1,10 @@
 import type { GathererBridge } from '../preload/preload';
 import { chainFor } from '../shared/chain';
+import { formatMoney } from '../shared/money';
 import { headerOf, pageName } from '../shared/pageName';
-import type { ChainStep, Guide, ItemComment, LookupInfo, MarkupNode, PopupState, SourceSection } from '../shared/types';
+import type {
+  ChainStep, Guide, ItemComment, LookupInfo, MarkupNode, PopupState, QuestRewards, RewardItem, SourceSection,
+} from '../shared/types';
 
 /** What the popup's buttons and links do. The preload bridge supplies them in the app. */
 export interface PopupActions {
@@ -51,6 +54,19 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
+/** The class that colours a name by item quality, e.g. "q2" for green. */
+function qualityClass(quality: number): string {
+  return `q${Math.min(Math.max(Math.trunc(quality), 0), MAX_QUALITY)}`;
+}
+
+function iconImage(name: string, className: string): HTMLImageElement | null {
+  if (!ICON_NAME.test(name)) return null;
+  const icon = el('img', className);
+  icon.src = `${ICON_URL}${name.toLowerCase()}.jpg`;
+  icon.alt = '';
+  return icon;
+}
+
 const SVG = 'http://www.w3.org/2000/svg';
 
 /** A pushpin, drawn here: its cap, its body widening to a collar, and its point. */
@@ -69,16 +85,11 @@ function pushpin(): SVGSVGElement {
 function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
   const header = el('header');
   const item = headerOf(state);
-  if (item?.icon && ICON_NAME.test(item.icon)) {
-    const icon = el('img', 'icon');
-    icon.src = `${ICON_URL}${item.icon.toLowerCase()}.jpg`;
-    icon.alt = '';
-    header.append(icon);
-  }
+  const icon = item?.icon ? iconImage(item.icon, 'icon') : null;
+  if (icon) header.append(icon);
   const quest = (item?.kind ?? state.link.kind) === 'quest';
-  const quality = Math.min(Math.max(Math.trunc(item?.quality ?? 1), 0), MAX_QUALITY);
   // Quest names are gold, as in the game's quest log; items take their quality colour.
-  header.append(el('h1', quest ? 'quest' : `q${quality}`, pageName(state)));
+  header.append(el('h1', quest ? 'quest' : qualityClass(item?.quality ?? 1), pageName(state)));
   const open = el('button', 'open', 'Wowhead');
   open.title = 'Open this page on Wowhead';
   open.addEventListener('click', () => actions.openWowhead());
@@ -146,6 +157,43 @@ function renderChain(chain: ChainStep[], actions: PopupActions): HTMLElement {
     list.append(row);
   }
   block.append(list);
+  return block;
+}
+
+function rewardList(items: RewardItem[]): HTMLElement {
+  const list = el('ul');
+  for (const item of items) {
+    const row = el('li');
+    const icon = iconImage(item.icon, 'reward-icon');
+    if (icon) row.append(icon);
+    row.append(el('span', `name ${qualityClass(item.quality)}`, item.name));
+    if (item.count > 1) row.append(el('span', 'details', `×${item.count}`));
+    list.append(row);
+  }
+  return list;
+}
+
+/** "9,020 XP (54s at max level) · 90s · +250 Honor Hold", leaving out what the quest doesn't give. */
+function gainsText(rewards: QuestRewards): string {
+  const parts: string[] = [];
+  const atCap = rewards.moneyAtCap > 0 ? `${formatMoney(rewards.moneyAtCap)} at max level` : '';
+  if (rewards.xp > 0) parts.push(`${rewards.xp.toLocaleString('en-US')} XP${atCap ? ` (${atCap})` : ''}`);
+  else if (atCap) parts.push(atCap);
+  if (rewards.money > 0) parts.push(formatMoney(rewards.money));
+  for (const { faction, amount } of rewards.reputation) parts.push(`${amount > 0 ? '+' : ''}${amount} ${faction}`);
+  return parts.join(' · ');
+}
+
+/** What finishing the quest gives: items to choose from, items everyone gets, then the rest on one line. */
+function renderRewards(rewards: QuestRewards): HTMLElement {
+  const block = el('section', 'rewards');
+  block.append(el('h2', undefined, 'Rewards'));
+  if (rewards.choice.length > 0) block.append(el('p', 'label', 'Choose one:'), rewardList(rewards.choice));
+  if (rewards.always.length > 0) {
+    block.append(el('p', 'label', rewards.choice.length > 0 ? 'You also get:' : 'You get:'), rewardList(rewards.always));
+  }
+  const gains = gainsText(rewards);
+  if (gains) block.append(el('p', 'gains', gains));
   return block;
 }
 
@@ -231,12 +279,14 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
   }
   const { info } = state;
   if (info.kind === 'item') root.append(...info.sections.map((section) => renderSection(section, actions)));
+  // Rewards come first, so they're in view while the player clicks through a chain.
+  if (info.kind === 'quest' && info.rewards) root.append(renderRewards(info.rewards));
   const chain = chainFor(state);
   if (chain.length > 0) root.append(renderChain(chain, actions));
   if (info.kind === 'quest' && info.guides.length > 0) root.append(renderGuides(info.guides, actions));
   if (info.comments.length > 0) root.append(renderComments(info, actions));
   const listsNothing = info.kind === 'item' ? info.sections.length === 0
-    : info.kind === 'quest' ? chain.length === 0 && info.guides.length === 0 : true;
+    : info.kind === 'quest' ? chain.length === 0 && info.guides.length === 0 && !info.rewards : true;
   if (listsNothing && info.comments.length === 0) root.append(el('p', 'status', NOTHING_LISTED[info.kind]));
 }
 
