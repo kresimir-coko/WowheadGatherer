@@ -55,8 +55,15 @@ function start(): void {
       lookUp(link);
     },
     onForeground: (gameInFront, exeName) => {
-      // Switching to another program hides the popup. Clicking the popup doesn't, since it never takes focus.
-      if (!gameInFront && exeName !== '' && exeName.toLowerCase() !== ownExe) popup.hide();
+      if (gameInFront) {
+        popup.resume();
+        return;
+      }
+      // Another program in front: a pinned popup waits for the game; any other closes.
+      // Clicking or dragging the popup doesn't count, since it never takes focus.
+      if (exeName === '' || exeName.toLowerCase() === ownExe) return;
+      if (popup.isPinned()) popup.suspend();
+      else popup.hide();
     },
   });
   watcher.start();

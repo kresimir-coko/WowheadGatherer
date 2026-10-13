@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { contentHeight, renderState, type PopupActions } from '../src/renderer/popup';
+import { contentHeight, refitWhenFontsLoad, renderState, type PopupActions } from '../src/renderer/popup';
 import type { ItemInfo, PopupState, QuestInfo } from '../src/shared/types';
 import { parseWowheadLink } from '../src/shared/wowheadLink';
 
@@ -22,7 +22,7 @@ let root: HTMLElement;
 let actions: PopupActions;
 beforeEach(() => {
   root = document.createElement('main');
-  actions = { close: vi.fn(), openWowhead: vi.fn(), openQuest: vi.fn(), goBack: vi.fn(), resized: vi.fn(), openGuide: vi.fn() };
+  actions = { close: vi.fn(), openWowhead: vi.fn(), openQuest: vi.fn(), goBack: vi.fn(), resized: vi.fn(), openGuide: vi.fn(), setPinned: vi.fn() };
 });
 const show = (state: PopupState) => renderState(root, state, actions);
 const text = (selector: string) => root.querySelector(selector)?.textContent;
@@ -302,5 +302,52 @@ describe('long chains and guides', () => {
     expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
     expect(text('.chain button.quest-link')).toBe(evil);
     expect(text('.guides .guide-link')).toBe(evil);
+  });
+});
+
+describe('the window', () => {
+  it('keeps the breadcrumb and the title row in the sticky bar', () => {
+    show({ kind: 'ready', link: questLink, info: quest, trail: ["Duron's Report"] });
+    expect(root.querySelector('.top > .trail')).not.toBeNull();
+    expect(root.querySelector('.top > header')).not.toBeNull();
+  });
+
+  it('pins and unpins', () => {
+    show({ kind: 'ready', link, info });
+    expect(text('.pin')).toBe('Pin');
+    root.querySelector<HTMLButtonElement>('.pin')?.click();
+    expect(actions.setPinned).toHaveBeenLastCalledWith(true);
+    show({ kind: 'ready', link, info, pinned: true });
+    expect(text('.pin')).toBe('Pinned');
+    expect(root.querySelector('.pin')?.classList.contains('pinned')).toBe(true);
+    root.querySelector<HTMLButtonElement>('.pin')?.click();
+    expect(actions.setPinned).toHaveBeenLastCalledWith(false);
+  });
+
+  it('shows an error under the breadcrumb, which still goes back', () => {
+    show({ kind: 'error', link: questLink, message: 'Blocked.', header: null, trail: ['Fel Orc Scavengers'] });
+    expect(all('.trail .crumb')).toEqual(['Fel Orc Scavengers']);
+    expect(text('.status.error')).toBe('Blocked.');
+    root.querySelector<HTMLButtonElement>('.trail .crumb')?.click();
+    expect(actions.goBack).toHaveBeenCalledWith(0);
+  });
+
+  it('never turns a clickable quest name into HTML', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    show({ kind: 'ready', link: questLink, info: { ...quest, chain: [
+      { position: 1, quests: [{ id: 5, name: evil, current: false }] },
+      { position: 2, quests: [{ id: 10482, name: 'Fel Orc Scavengers', current: true }] },
+    ] } });
+    expect(text('.chain button.quest-link')).toBe(evil);
+    expect(root.querySelectorAll('img')).toHaveLength(1); // just the quest icon
+  });
+
+  it('re-fits once fonts are ready, and not without fonts', async () => {
+    const resized = vi.fn();
+    refitWhenFontsLoad({ ready: Promise.resolve() }, resized);
+    refitWhenFontsLoad(undefined, resized);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(resized).toHaveBeenCalledTimes(1);
   });
 });

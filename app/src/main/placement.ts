@@ -24,9 +24,17 @@ export function placePopup(cursor: Point, size: Size, area: Rect): Point {
   return { x: Math.round(x), y: Math.round(y) };
 }
 
+/** A position moved just enough for a window of size to stay on the screen. */
+export function keepOnScreen(position: Point, size: Size, area: Rect): Point {
+  return {
+    x: Math.round(clamp(position.x, area.x, area.x + area.width - size.width)),
+    y: Math.round(clamp(position.y, area.y, area.y + area.height - size.height)),
+  };
+}
+
 /** The popup's width, and the range its height fits its content within, in pixels. */
 export const POPUP_WIDTH = 420;
-export const POPUP_MIN_HEIGHT = 96;
+export const POPUP_MIN_HEIGHT = 64;
 export const POPUP_MAX_HEIGHT = 560;
 
 /**

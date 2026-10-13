@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitHeight, placePopup, POPUP_MAX_HEIGHT, POPUP_MIN_HEIGHT } from '../src/main/placement';
+import { fitHeight, keepOnScreen, placePopup, POPUP_MAX_HEIGHT, POPUP_MIN_HEIGHT } from '../src/main/placement';
 
 const SCREEN = { x: 0, y: 0, width: 1920, height: 1080 };
 const SIZE = { width: 420, height: 300 };
@@ -48,5 +48,18 @@ describe('fitHeight', () => {
 
   it.each([['text', 'x'], ['NaN', Number.NaN], ['infinity', Number.POSITIVE_INFINITY], ['nothing', undefined]])('ignores %s', (_, reported) => {
     expect(fitHeight(reported, 300, false)).toBeNull();
+  });
+});
+
+describe('the popup window', () => {
+  it('is never shorter than 64 px, so a short page leaves no invisible strip', () => {
+    expect(POPUP_MIN_HEIGHT).toBe(64);
+    expect(fitHeight(20, 300, false)).toBe(64);
+  });
+
+  it('keeps a moved or pinned popup where it is, unless it would leave the screen', () => {
+    expect(keepOnScreen({ x: 100, y: 100 }, SIZE, SCREEN)).toEqual({ x: 100, y: 100 });
+    expect(keepOnScreen({ x: 1800, y: 900 }, SIZE, SCREEN)).toEqual({ x: 1500, y: 780 });
+    expect(keepOnScreen({ x: -50.6, y: -10 }, SIZE, SCREEN)).toEqual({ x: 0, y: 0 });
   });
 });

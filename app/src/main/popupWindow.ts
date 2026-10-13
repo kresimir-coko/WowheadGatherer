@@ -1,7 +1,7 @@
 import { BrowserWindow, globalShortcut, ipcMain, screen, shell, type IpcMainEvent } from 'electron';
 import path from 'node:path';
 import type { PopupState } from '../shared/types';
-import { fitHeight, placePopup, POPUP_MIN_HEIGHT, POPUP_WIDTH, type Point } from './placement';
+import { fitHeight, keepOnScreen, placePopup, POPUP_MIN_HEIGHT, POPUP_WIDTH, type Point } from './placement';
 
 /** What clicks inside the popup ask of the app. */
 export interface PopupHandlers {
@@ -21,6 +21,12 @@ export class Popup {
   private height = POPUP_MIN_HEIGHT;
   /** Set while a page clicked inside the popup loads: the height doesn't shrink until it's in. */
   private holdHeight = false;
+  /** Pinned: stays open while the player plays (no Escape shortcut), and lookups show where it is. */
+  private pinned = false;
+  /** Hidden while another program is in front, keeping its page, because it's pinned. */
+  private suspended = false;
+  /** The window's top-left once placed or dragged; null places it by the cursor next time. */
+  private position: Point | null = null;
 
   constructor(private readonly handlers: PopupHandlers) {
     this.window = new BrowserWindow({
@@ -29,7 +35,8 @@ export class Popup {
       show: false,
       frame: false,
       resizable: false,
-      movable: false,
+      // Dragging the top bar moves it (-webkit-app-region in popup.css).
+      movable: true,
       minimizable: false,
       maximizable: false,
       fullscreenable: false,
@@ -64,23 +71,32 @@ export class Popup {
     ipcMain.on('popup:open-quest', (event, id: unknown) => fromPopup(event) && this.handlers.openQuest(id));
     ipcMain.on('popup:go-back', (event, index: unknown) => fromPopup(event) && this.handlers.goBack(index));
     ipcMain.on('popup:open-guide', (event, index: unknown) => fromPopup(event) && this.handlers.openGuide(index));
+    ipcMain.on('popup:pin', (event, on: unknown) => fromPopup(event) && typeof on === 'boolean' && this.setPinned(on));
+    // The player dragged it: it stays there, also as it grows.
+    this.window.on('moved', () => {
+      const [x, y] = this.window.getPosition();
+      this.position = { x, y };
+    });
   }
 
-  /** Shows a new lookup by the cursor. */
+  /** Shows a new lookup: by the cursor, or where the popup is while it's pinned. */
   open(state: PopupState): void {
-    this.anchor = screen.getCursorScreenPoint();
+    if (!this.pinned) {
+      this.anchor = screen.getCursorScreenPoint();
+      this.position = null;
+    }
     this.holdHeight = false;
     this.show(state);
   }
 
-  /** Shows a lookup's result, if the popup still shows that lookup. */
+  /** Shows a lookup's result, if the popup still shows that lookup (a pinned popup keeps it while suspended). */
   update(state: PopupState): void {
-    if (!this.window.isVisible() || this.state?.link.url !== state.link.url) return;
+    if (!(this.window.isVisible() || this.suspended) || this.state?.link.url !== state.link.url) return;
     this.holdHeight = false;
     this.show(state);
   }
 
-  /** The lookup on show, or null when the popup is hidden. */
+  /** The lookup on show, or null when the popup is closed. */
   current(): PopupState | null {
     return this.state;
   }
@@ -93,7 +109,37 @@ export class Popup {
     this.show(state);
   }
 
+  /** Pins the popup open while the player plays, or unpins it. Pinned, Escape belongs to the game again. */
+  setPinned(on: boolean): void {
+    this.pinned = on;
+    if (on) globalShortcut.unregister('Escape');
+    else if (this.window.isVisible()) this.registerEscape();
+    if (this.state) this.show(this.state);
+  }
+
+  isPinned(): boolean {
+    return this.pinned;
+  }
+
+  /** Hides a pinned popup while another program is in front, keeping its page. */
+  suspend(): void {
+    if (!this.window.isVisible()) return;
+    this.window.hide();
+    this.suspended = true;
+  }
+
+  /** Brings a suspended popup back when the game is in front again. */
+  resume(): void {
+    if (!this.suspended) return;
+    this.suspended = false;
+    if (this.state) this.window.showInactive();
+  }
+
+  /** Closes the popup, and unpins it. */
   hide(): void {
+    this.suspended = false;
+    this.pinned = false;
+    this.position = null;
     if (!this.window.isVisible()) return;
     this.window.hide();
     this.state = null;
@@ -102,14 +148,19 @@ export class Popup {
   }
 
   private show(state: PopupState): void {
-    this.state = state;
-    this.window.webContents.send('popup:state', state);
+    this.state = { ...state, pinned: this.pinned };
+    this.window.webContents.send('popup:state', this.state);
+    if (this.suspended) return;
     this.place();
     if (!this.window.isVisible()) {
       this.window.showInactive();
-      // While the popup is up, Escape closes it, as it closes the game's own windows.
-      globalShortcut.register('Escape', () => this.hide());
+      if (!this.pinned) this.registerEscape();
     }
+  }
+
+  /** While the popup is up and not pinned, Escape closes it, as it closes the game's own windows. */
+  private registerEscape(): void {
+    if (!globalShortcut.isRegistered('Escape')) globalShortcut.register('Escape', () => this.hide());
   }
 
   private fitHeight(reported: unknown): void {
@@ -120,13 +171,15 @@ export class Popup {
   }
 
   private place(): void {
-    const area = screen.getDisplayNearestPoint(this.anchor).workArea;
-    const { x, y } = placePopup(this.anchor, { width: POPUP_WIDTH, height: this.height }, area);
-    this.window.setBounds({ x, y, width: POPUP_WIDTH, height: this.height });
+    const size = { width: POPUP_WIDTH, height: this.height };
+    const area = screen.getDisplayNearestPoint(this.position ?? this.anchor).workArea;
+    // Once placed (or dragged), it stays put and only moves to stay on the screen.
+    this.position = this.position ? keepOnScreen(this.position, size, area) : placePopup(this.anchor, size, area);
+    this.window.setBounds({ ...this.position, ...size });
   }
 
   private openOnWowhead(): void {
-    // Only ever the link the add-on copied, as parseWowheadLink rebuilt it.
+    // Only the address of the page on show, as parseWowheadLink rebuilt it.
     const url = this.state?.link.url;
     this.hide();
     if (url) void shell.openExternal(url);

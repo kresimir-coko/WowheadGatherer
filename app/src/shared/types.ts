@@ -98,4 +98,6 @@ export type PopupState = (
 ) & {
   /** The names of the pages clicked through to reach this one, oldest first; none for a fresh lookup. */
   trail?: string[];
+  /** Whether the popup is pinned open (set by the main process). */
+  pinned?: boolean;
 };

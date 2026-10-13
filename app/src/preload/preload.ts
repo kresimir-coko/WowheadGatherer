@@ -24,6 +24,10 @@ const bridge = {
   openGuide(index: number): void {
     ipcRenderer.send('popup:open-guide', index);
   },
+  /** Pins the popup open while the player plays, or unpins it. */
+  setPinned(pinned: boolean): void {
+    ipcRenderer.send('popup:pin', pinned);
+  },
   reportHeight(height: number): void {
     ipcRenderer.send('popup:height', height);
   },

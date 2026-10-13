@@ -15,6 +15,8 @@ export interface PopupActions {
   resized(): void;
   /** Opens one of the quest's Wowhead guides in the browser, by its place in the list. */
   openGuide(index: number): void;
+  /** Pins the popup open while the player plays, or unpins it. */
+  setPinned(pinned: boolean): void;
 }
 
 declare global {
@@ -67,7 +69,10 @@ function renderHeader(state: PopupState, actions: PopupActions): HTMLElement {
   const close = el('button', 'close', '×');
   close.title = 'Close (Esc)';
   close.addEventListener('click', () => actions.close());
-  header.append(open, close);
+  const pin = el('button', state.pinned ? 'pin pinned' : 'pin', state.pinned ? 'Pinned' : 'Pin');
+  pin.title = state.pinned ? 'Unpin: Escape and switching away close it again' : 'Keep it open while you play';
+  pin.addEventListener('click', () => actions.setPinned(!state.pinned));
+  header.append(open, pin, close);
   return header;
 }
 
@@ -192,8 +197,11 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
   root.replaceChildren();
   // A new page starts at the top, wherever the last one was scrolled to.
   root.scrollTop = 0;
-  if (state.trail && state.trail.length > 0) root.append(renderTrail(state, state.trail, actions));
-  root.append(renderHeader(state, actions));
+  // The breadcrumb and the title row stay at the top while the rest scrolls; dragging them moves the popup.
+  const top = el('div', 'top');
+  if (state.trail && state.trail.length > 0) top.append(renderTrail(state, state.trail, actions));
+  top.append(renderHeader(state, actions));
+  root.append(top);
   if (state.kind === 'loading') {
     root.append(el('p', 'status', 'Looking it up on Wowhead…'));
     return;
@@ -211,6 +219,11 @@ export function renderState(root: HTMLElement, state: PopupState, actions: Popup
   const listsNothing = info.kind === 'item' ? info.sections.length === 0
     : info.kind === 'quest' ? chain.length === 0 && info.guides.length === 0 : true;
   if (listsNothing && info.comments.length === 0) root.append(el('p', 'status', NOTHING_LISTED[info.kind]));
+}
+
+/** Asks for a re-fit once the page's fonts have loaded: the first popup is laid out with the fallback font. */
+export function refitWhenFontsLoad(fonts: { ready: Promise<unknown> } | undefined, resized: () => void): void {
+  fonts?.ready.then(resized, () => {});
 }
 
 /**
@@ -231,11 +244,15 @@ if (bridge && root) {
     openQuest: (id) => bridge.openQuest(id),
     goBack: (index) => bridge.goBack(index),
     openGuide: (index) => bridge.openGuide(index),
+    setPinned: (pinned) => bridge.setPinned(pinned),
     // Once laid out, ask the window to fit the content (main keeps it within limits).
     resized: () => requestAnimationFrame(() => bridge.reportHeight(contentHeight(root))),
   };
+  // Load the font now, while the popup is hidden, rather than with the first lookup.
+  void document.fonts?.load("14px 'Marcellus'");
   bridge.onState((state) => {
     renderState(root, state, actions);
     actions.resized();
+    refitWhenFontsLoad(document.fonts, actions.resized);
   });
 }

@@ -18,4 +18,12 @@ describe('popup page', () => {
     for (const font of fonts) expect(existsSync(new URL(font, STATIC))).toBe(true);
     expect(existsSync(new URL('fonts/OFL.txt', STATIC))).toBe(true);
   });
+
+  it('makes the top bar sticky and draggable, and its controls clickable', () => {
+    const css = read('popup.css');
+    const rule = (selector: string) => new RegExp(`(^|\\n)${selector.replace('.', '\\.')}\\s*\\{([^}]*)\\}`).exec(css)?.[2] ?? '';
+    expect(rule('.top')).toMatch(/position:\s*sticky/);
+    expect(rule('.top')).toMatch(/-webkit-app-region:\s*drag/);
+    expect(rule('.top button')).toMatch(/-webkit-app-region:\s*no-drag/);
+  });
 });
