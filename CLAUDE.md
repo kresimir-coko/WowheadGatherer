@@ -2,13 +2,13 @@
 
 By Krešimir Čoko. Hover any item, quest or spell in World of Warcraft and press **Ctrl+C once**. A popup beside the cursor, over the game, shows what Wowhead knows: for an item, its sources (drops with chances, vendors, quests, crafting, containers, gathering); for a quest, its chain; for every one, the best comments. Quests in a chain, and the quests an item starts or is needed for, can be clicked to open them in the popup, with a breadcrumb back. A button opens the Wowhead page. It's mechanically inspired by Awakened PoE Trade, and has **nothing to do with trading or prices**.
 
-It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads in **WoW Forever** (`## Interface: 20506, 16001`; 16001 is a guess until Forever launches on 2026-11-04, so check `/dump select(4, GetBuildInfo())` there). It replaces the Wowhead Lookup add-on it started from. Designs: `docs/superpowers/specs/2026-10-09-wowhead-gatherer-design.md` and `docs/superpowers/specs/2026-10-10-quests-and-wow-look-design.md`; plans in `docs/superpowers/plans/`.
+It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads in **WoW Forever** (`## Interface: 20506, 16001`; 16001 is a guess until Forever launches on 2026-11-04, so check `/dump select(4, GetBuildInfo())` there). It replaces the Wowhead Lookup add-on it started from. Designs: `docs/superpowers/specs/` (2026-10-09 first build; 2026-10-10 quests and the WoW look, and clicking through quests; 2026-10-13 spells, and 0.4.0's pin, long chains and fixes); plans in `docs/superpowers/plans/`.
 
 ## Two halves, one contract
 
-- **The add-on** (repo root). Holding Ctrl over an item or quest readies its Wowhead link in a hidden, focused edit box, so C copies it with the game's own edit box. When that isn't possible (combat, action buttons, typing, option off), the lookup key opens Wowhead Lookup's link popup instead.
-- **The app** (`app\`, Electron + TypeScript). Watches the clipboard while `WowClassic.exe` is in front, reads the item's or quest's Wowhead page and shows the popup.
-- **The contract** is the link: `https://www.wowhead.com/[site/][lang/]<item|quest>=<id>`, with the language **after** the site. Change it on both sides or neither.
+- **The add-on** (repo root). Holding Ctrl over an item, quest or spell readies its Wowhead link in a hidden, focused edit box, so C copies it with the game's own edit box. When that isn't possible (combat, action buttons, typing, option off), the lookup key opens Wowhead Lookup's link popup instead.
+- **The app** (`app\`, Electron + TypeScript). Watches the clipboard while WoW (`WowClassic.exe` or `Wow.exe`) is in front, reads the item's, quest's or spell's Wowhead page and shows the popup.
+- **The contract** is the link: `https://www.wowhead.com/[site/][lang/]<item|quest|spell>=<id>[#chain=<id>~<name>.…]`, with the language **after** the site. A quest's link carries its whole chain from Questie after `#chain=` (names percent-encoded; browsers ignore it). Change it on both sides or neither.
 
 ## Hard limits
 
@@ -32,7 +32,7 @@ It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads
   - `npm run build` (esbuild writes `dist/`)
   - `npm start`
   - If Git Bash can't find `npm`, run `export PATH="/c/Program Files/nodejs:$PATH"` first.
-- **Run the app:** from source, `cd app && npm start`. As a program, `cd app && npm run dist`, then run `app\release\Wowhead Gatherer 0.3.0.exe` (portable; copy it anywhere). It lives in the tray, where Quit ends it.
+- **Run the app:** from source, `cd app && npm start`. As a program, `cd app && npm run dist`, then run `app\release\Wowhead Gatherer 0.4.0.exe` (portable; copy it anywhere). It lives in the tray, where Quit ends it.
 - **`ELECTRON_RUN_AS_NODE`:** shells started by VS Code extensions (including Claude Code's) set `ELECTRON_RUN_AS_NODE=1`, which makes Electron run as plain Node and fail with "Cannot find module 'electron'". Start it with `env -u ELECTRON_RUN_AS_NODE npm start`, or from a normal terminal.
 - **Display mode:** WoW must be in Windowed or Windowed (Fullscreen) mode. Exclusive full screen hides the overlay.
 - **Verifying WoW APIs:** clone `github.com/Gethe/wow-ui-source` (branch `classic_anniversary`) to the scratchpad and grep `Interface/AddOns/Blizzard_APIDocumentationGenerated`.
@@ -44,7 +44,7 @@ It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads
 | `Core.lua` | Defaults, SavedVariables (`WowheadGathererDB`, `WowheadGathererCharDB`), event dispatch to `ns:EVENT()`, `ns:LookupHovered`, `ns:TryOfferDefaultKey`, `/whg`. |
 | `Url.lua` | `ns.BuildURL(kind, id, projectID, locale)` (`BuildItemURL` wraps it), `ns.ParseItemLink`, `ns.ParseQuestLink`. |
 | `Lookup.lua` | `ns.GetHoveredItem()` and `ns.GetHoveredSpell()` from the tooltip on show (mainline-family clients like Forever read tooltip data through `TooltipUtil`; TBC has no `TooltipUtil` and uses `GetItem()`, and `GetSpell()`'s last number). `ns.SpellIcon`/`ns.SpellName` (C_Spell in Forever, the old globals in TBC). `ns.GetHovered()` → `kind, id, label`: items, then spells, then quests. |
-| `Quests.lua` | `ns.GetHoveredQuest()`: quest log titles and Forever's tracker through `EventRegistry` hover announcements, TBC's tracker lines through a `QuestWatch_Update` post-hook, chat quest links through `ItemRefTooltip:SetHyperlink`. Every TBC-only global is behind an existence check. |
+| `Quests.lua` | `ns.GetHoveredQuest()`: quest log titles and Forever's tracker through `EventRegistry` hover announcements, TBC's tracker lines through a `QuestWatch_Update` post-hook, chat quest links through `ItemRefTooltip:SetHyperlink`. Every TBC-only global is behind an existence check. `ns.QuestChain`/`ns.QuestChainFragment` read the whole chain from Questie's public `LibQuestieDB` (through `pcall`), and `ns:LookupURL` adds it to quest links. |
 | `Keybinding.lua` | `WOWHEADGATHERER_LOOKUP`, `WowheadGatherer_OnBinding`, `ns:OfferDefaultKey()` (Ctrl+C, once per binding set). |
 | `Popup.lua` | `ns.CreateCopyWatcher()`, `ns:ShowCopyPopup(url, kind, id, label)`, `ns.MODIFIER_KEYS`. The fallback link popup. |
 | `ReadyCopy.lua` | The one-press copy: `ns:ReadyCopy()`, `ns:UnreadyCopy()`, `ns:CanReadyCopy()`, `MODIFIER_STATE_CHANGED`. A readied quest lets go when the cursor leaves it (the box's `OnUpdate`). |
@@ -60,11 +60,12 @@ It targets **Burning Crusade Anniversary** (2.5.6) on Windows 11, and also loads
 | `main/markup.ts`, `main/comments.ts`, `main/itemInfo.ts` | Comment markup → safe nodes; the best comments; source sections. |
 | `main/questPage.ts`, `main/questInfo.ts` | A quest page's heading and "Series" box; the quest's popup info. Every quest shows the icon `inv_misc_note_01`: the pages name `quest-start`, which Wowhead's image server doesn't have. |
 | `main/spellInfo.ts` | A spell page's heading, icon (Gatherer type 6) and comments. |
+| `shared/chain.ts`, `main/memoLast.ts` | `chainFor(state)`: Questie's chain from the link, else Wowhead's Series box. `memoLast`: the foreground program is looked up only when the window changes. |
 | `main/trail.ts`, `shared/pageName.ts` | The pages clicked through in the popup (`Trail`): it opens only quests the page on show lets the player click, builds their addresses itself, and goes back along the breadcrumb. `pageName` names a page. |
 | `static/popup.css`, `static/fonts/` | The game's panel look in CSS; Marcellus (SIL OFL) stands in for Friz Quadrata. |
 | `main/cache.ts`, `main/wowheadClient.ts` | Disk cache; fetch → browser fallback → tooltip-service header. |
 | `main/win32.ts`, `main/clipboardWatcher.ts` | koffi calls; the clipboard watcher. |
-| `main/placement.ts`, `main/popupWindow.ts`, `renderer/popup.ts`, `preload/preload.ts` | The overlay. The page sends only numbers back (a quest ID, a breadcrumb index, its height); `popupWindow.ts` takes them only from its own page. Comments show 3, then 5 more per click. |
+| `main/placement.ts`, `main/popupWindow.ts`, `renderer/popup.ts`, `preload/preload.ts` | The overlay. The page sends only booleans and numbers back (pin, a quest ID, a guide or breadcrumb index, its height); `popupWindow.ts` takes them only from its own page. The top bar (breadcrumb, title, Open, Pin, ×) is sticky and drags the window. Pinned, it keeps no Escape shortcut and suspends while another program is in front. Comments show 3, then 5 more per click. |
 | `main/browserFetch.ts`, `main/userAgent.ts`, `main/latestOnly.ts`, `main/trayIcon.ts`, `main/main.ts` | The Electron shell. |
 
 ## Conventions

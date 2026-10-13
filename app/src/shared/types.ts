@@ -39,7 +39,7 @@ export interface PageHeader {
   name: string;
   /** 0 poor … 5 legendary, 6 artifact, 7 heirloom, as in the game; quests are 1. */
   quality: number;
-  /** The icon's file name on Wowhead's image server, e.g. "inv_axe_60" or "quest-start", or "". */
+  /** The icon's file name on Wowhead's image server, e.g. "inv_axe_60" or "inv_misc_note_01", or "". */
   icon: string;
 }
 

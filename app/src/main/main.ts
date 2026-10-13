@@ -69,7 +69,7 @@ function start(): void {
   watcher.start();
 
   tray = new Tray(nativeImage.createFromBitmap(trayIconPixels(), { width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE }));
-  tray.setToolTip('Wowhead Gatherer: hold Ctrl over an item or quest in WoW and press C');
+  tray.setToolTip('Wowhead Gatherer: hold Ctrl over an item, quest or spell in WoW and press C');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Wowhead Gatherer', enabled: false },
     { type: 'separator' },
